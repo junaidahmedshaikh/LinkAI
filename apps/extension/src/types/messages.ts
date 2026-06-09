@@ -3,6 +3,7 @@ import type {
   IExtensionHeartbeatPayload,
   IExtensionMeResponse,
   LinkedInPageType,
+  IGeneratedComment,
 } from "@linkai/types";
 
 export enum MessageType {
@@ -27,6 +28,7 @@ export enum MessageType {
   AI_GENERATE_COMMENT = "AI_GENERATE_COMMENT",
   AI_INSERT_COMMENT = "AI_INSERT_COMMENT",
   AI_GET_COMMENT_HISTORY = "AI_GET_COMMENT_HISTORY",
+  LINKEDIN_GENERATE_COMMENT = "LINKEDIN_GENERATE_COMMENT",
   PING = "PING",
 }
 
@@ -38,11 +40,19 @@ export interface BaseMessage<T = MessageType, P = unknown> {
 
 export type LoginPayload = { email: string; password: string };
 
+export type GenerateCommentPayload = {
+  postContent: string;
+  postAuthor?: string;
+  postUrl?: string;
+  tone: "professional" | "thought-leadership" | "friendly" | "networking" | "industry-expert" | "funny";
+};
+
 export type MessageResponses = {
   [MessageType.AUTH_LOGIN]: { success: boolean; error?: string };
   [MessageType.AUTH_GET_STATE]: { isAuthenticated: boolean; userEmail?: string };
   [MessageType.API_GET_ME]: IExtensionMeResponse | null;
   [MessageType.LINKEDIN_PAGE_CHANGED]: { pageType: LinkedInPageType; url: string };
+  [MessageType.LINKEDIN_GENERATE_COMMENT]: { comment: IGeneratedComment };
   [MessageType.PING]: { pong: boolean };
 };
 

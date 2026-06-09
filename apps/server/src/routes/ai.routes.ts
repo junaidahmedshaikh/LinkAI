@@ -10,5 +10,7 @@ router.use(authenticate);
 
 router.post("/comments/generate", validate(generateCommentSchema), aiController.generateComment);
 router.get("/comments/history", aiController.getCommentHistory);
+router.delete("/comments/:id", aiController.deleteComment);
+router.get("/comments/search", aiController.searchComments);
 
 export default router;

@@ -4,6 +4,7 @@ import { extractForCurrentPage } from "@/utils/linkedin-extractors";
 import { extractActivePost } from "@/utils/linkedin-post";
 import { insertCommentText } from "@/utils/comment-insert";
 import { persistDebugLog } from "@/utils/debug";
+import { linkedInCommentHandler } from "./linkedin-comment-handler";
 import type { MessageResponse } from "@/types/messages";
 
 let lastUrl = location.href;
@@ -16,6 +17,13 @@ function notifyPageChange(url: string): void {
     payload: { pageType, url },
   });
   void persistDebugLog("content", `page: ${pageType}`, { url });
+
+  // Start/stop AI comment handler based on page type
+  if (pageType === "feed" || pageType === "post") {
+    linkedInCommentHandler.start();
+  } else {
+    linkedInCommentHandler.stop();
+  }
 }
 
 function runExtraction(): void {

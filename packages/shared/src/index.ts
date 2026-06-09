@@ -62,6 +62,8 @@ export const API_ROUTES = {
   AI: {
     GENERATE_COMMENT: "/api/ai/comments/generate",
     COMMENT_HISTORY: "/api/ai/comments/history",
+    DELETE_COMMENT: (id: string) => `/api/ai/comments/${id}`,
+    SEARCH_COMMENTS: "/api/ai/comments/search",
   },
 } as const;
 

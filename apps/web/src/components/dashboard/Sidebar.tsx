@@ -13,6 +13,7 @@ const navItems = [
   { to: ROUTES.PROFILE, label: "Profile", icon: "◎" },
   { to: ROUTES.RESUMES, label: "Resume Manager", icon: "▤" },
   { to: ROUTES.LINKEDIN_PROFILE, label: "LinkedIn Profile", icon: "in" },
+  { to: ROUTES.COMMENTS, label: "AI Comments", icon: "✨" },
   { to: ROUTES.ACTIVITY, label: "Activity", icon: "↻" },
   { to: ROUTES.DEVICES, label: "Devices", icon: "⬡" },
   { to: ROUTES.SETTINGS, label: "Settings", icon: "⚙" },
@@ -58,11 +59,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-accent/15 text-white border border-accent/20"
-                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                  : "text-muted-foreground hover:bg-white/5 hover:text-white",
               )
             }
           >
-            <span className="w-5 text-center text-xs opacity-70">{item.icon}</span>
+            <span className="w-5 text-center text-xs opacity-70">
+              {item.icon}
+            </span>
             {item.label}
           </NavLink>
         ))}
@@ -73,7 +76,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive ? "bg-amber-500/15 text-amber-200" : "text-muted-foreground hover:bg-white/5"
+                isActive
+                  ? "bg-amber-500/15 text-amber-200"
+                  : "text-muted-foreground hover:bg-white/5",
               )
             }
           >

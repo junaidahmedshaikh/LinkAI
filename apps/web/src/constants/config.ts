@@ -19,6 +19,7 @@ export const ROUTES = {
   RESUMES: "/dashboard/resumes",
   LINKEDIN_PROFILE: "/dashboard/linkedin-profile",
   ACTIVITY: "/dashboard/activity",
+  COMMENTS: "/dashboard/comments",
   SETTINGS: "/dashboard/settings",
   DEVICES: "/dashboard/devices",
   ADMIN: "/dashboard/admin",

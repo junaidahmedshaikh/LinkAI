@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import type { CommentTone, ICommentHistoryItem, ILinkedInPostExtract } from "@linkai/types";
+import type {
+  CommentTone,
+  ICommentHistoryItem,
+  ILinkedInPostExtract,
+} from "@linkai/types";
 import { COMMENT_TONES } from "@linkai/types";
 import { MessageType, sendMessage } from "@/services/messaging.service";
-import { extractActivePostFromTab, insertCommentOnPage } from "@/services/linkedin-content.service";
+import {
+  extractActivePostFromTab,
+  insertCommentOnPage,
+} from "@/services/linkedin-content.service";
 import { SidebarCard } from "@/components/ui/SidebarCard";
 import { Loader } from "@/components/ui/Loader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -10,10 +17,11 @@ import { cn } from "@/utils/cn";
 
 const TONE_LABELS: Record<CommentTone, string> = {
   professional: "Professional",
+  "thought-leadership": "Thought Leader",
   friendly: "Friendly",
-  insightful: "Insightful",
-  supportive: "Supportive",
-  witty: "Witty",
+  networking: "Networking",
+  "industry-expert": "Industry Expert",
+  funny: "Funny",
 };
 
 interface CommentGeneratorProps {
@@ -21,7 +29,10 @@ interface CommentGeneratorProps {
   onUsageUpdate?: () => void;
 }
 
-export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorProps) {
+export function CommentGenerator({
+  enabled,
+  onUsageUpdate,
+}: CommentGeneratorProps) {
   const [post, setPost] = useState<ILinkedInPostExtract | null>(null);
   const [tone, setTone] = useState<CommentTone>("professional");
   const [comment, setComment] = useState("");
@@ -39,7 +50,9 @@ export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorPro
       const extracted = await extractActivePostFromTab();
       setPost(extracted);
       if (!extracted?.content) {
-        setError("Scroll to a LinkedIn post with visible text, then scan again.");
+        setError(
+          "Scroll to a LinkedIn post with visible text, then scan again.",
+        );
       }
     } finally {
       setScanning(false);
@@ -115,7 +128,9 @@ export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorPro
   if (!enabled) {
     return (
       <SidebarCard title="AI Comment Generator">
-        <p className="text-xs text-muted-foreground">This feature is not enabled for your account.</p>
+        <p className="text-xs text-muted-foreground">
+          This feature is not enabled for your account.
+        </p>
       </SidebarCard>
     );
   }
@@ -124,7 +139,11 @@ export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorPro
     <SidebarCard
       title="AI Comment Generator"
       action={
-        <button type="button" onClick={() => void refreshPost()} className="text-xs text-accent hover:underline">
+        <button
+          type="button"
+          onClick={() => void refreshPost()}
+          className="text-xs text-accent hover:underline"
+        >
           {scanning ? "Scanning…" : "Scan post"}
         </button>
       }
@@ -132,7 +151,9 @@ export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorPro
       <div className="space-y-3">
         {post?.content ? (
           <div className="rounded-lg bg-surface-elevated p-2 text-xs text-muted-foreground max-h-24 overflow-y-auto">
-            {post.author && <p className="font-medium text-white mb-1">{post.author}</p>}
+            {post.author && (
+              <p className="font-medium text-white mb-1">{post.author}</p>
+            )}
             <p className="line-clamp-4">{post.content}</p>
           </div>
         ) : (
@@ -153,7 +174,7 @@ export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorPro
                   "rounded-full px-2.5 py-1 text-[10px] font-medium border transition",
                   tone === t
                     ? "border-accent bg-accent/20 text-white"
-                    : "border-surface-border text-muted-foreground hover:border-accent/40"
+                    : "border-surface-border text-muted-foreground hover:border-accent/40",
                 )}
               >
                 {TONE_LABELS[t]}
@@ -215,13 +236,17 @@ export function CommentGenerator({ enabled, onUsageUpdate }: CommentGeneratorPro
 
         {history.length > 0 && (
           <div className="border-t border-surface-border pt-3">
-            <p className="text-xs font-medium text-white mb-2">Recent comments</p>
+            <p className="text-xs font-medium text-white mb-2">
+              Recent comments
+            </p>
             <ul className="space-y-2 max-h-32 overflow-y-auto">
               {history.slice(0, 5).map((item) => (
                 <li key={item._id} className="text-xs">
                   <div className="flex items-center gap-1 mb-0.5">
                     <StatusBadge label={item.tone} variant="muted" />
-                    <span className="text-muted-foreground">{new Date(item.createdAt).toLocaleDateString()}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                   <button
                     type="button"

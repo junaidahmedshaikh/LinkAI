@@ -8,6 +8,7 @@ export interface ICommentHistoryDocument extends Document {
   postUrl?: string;
   tone: CommentTone;
   generatedText: string;
+  tokensUsed?: number;
   createdAt: Date;
 }
 
@@ -19,10 +20,18 @@ const commentHistorySchema = new Schema<ICommentHistoryDocument>(
     postUrl: { type: String, maxlength: 500 },
     tone: {
       type: String,
-      enum: ["professional", "friendly", "insightful", "supportive", "witty"],
+      enum: [
+        "professional",
+        "thought-leadership",
+        "friendly",
+        "networking",
+        "industry-expert",
+        "funny",
+      ],
       required: true,
     },
     generatedText: { type: String, required: true, maxlength: 2000 },
+    tokensUsed: { type: Number, default: 0 },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

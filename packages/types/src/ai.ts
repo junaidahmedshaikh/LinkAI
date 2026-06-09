@@ -1,9 +1,10 @@
 export type CommentTone =
   | "professional"
+  | "thought-leadership"
   | "friendly"
-  | "insightful"
-  | "supportive"
-  | "witty";
+  | "networking"
+  | "industry-expert"
+  | "funny";
 
 export interface IGenerateCommentRequest {
   postContent: string;
@@ -15,12 +16,14 @@ export interface IGenerateCommentRequest {
 export interface IGeneratedComment {
   text: string;
   tone: CommentTone;
+  tokensUsed?: number;
 }
 
 export interface IGenerateCommentResponse {
   comment: IGeneratedComment;
   alternatives?: IGeneratedComment[];
   usageRemaining?: number;
+  dailyRemaining?: number;
 }
 
 export interface ICommentHistoryItem {
@@ -31,13 +34,15 @@ export interface ICommentHistoryItem {
   postUrl?: string;
   tone: CommentTone;
   generatedText: string;
+  tokensUsed?: number;
   createdAt: string;
 }
 
 export const COMMENT_TONES: CommentTone[] = [
   "professional",
+  "thought-leadership",
   "friendly",
-  "insightful",
-  "supportive",
-  "witty",
+  "networking",
+  "industry-expert",
+  "funny",
 ];

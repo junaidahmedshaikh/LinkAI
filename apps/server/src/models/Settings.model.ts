@@ -15,6 +15,9 @@ export interface ISettingsDocument extends Document {
   };
   usageStats: {
     commentsGenerated: number;
+    commentsGeneratedToday?: number;
+    tokensUsedTotal?: number;
+    lastResetDate?: Date;
     postsRewritten: number;
     connectionRequests: number;
     applicationsTracked: number;
@@ -45,6 +48,9 @@ const settingsSchema = new Schema<ISettingsDocument>(
     },
     usageStats: {
       commentsGenerated: { type: Number, default: 0, min: 0 },
+      commentsGeneratedToday: { type: Number, default: 0, min: 0 },
+      tokensUsedTotal: { type: Number, default: 0, min: 0 },
+      lastResetDate: { type: Date, default: () => new Date() },
       postsRewritten: { type: Number, default: 0, min: 0 },
       connectionRequests: { type: Number, default: 0, min: 0 },
       applicationsTracked: { type: Number, default: 0, min: 0 },

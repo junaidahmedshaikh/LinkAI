@@ -18,7 +18,8 @@ export type ActivityType =
   | "EXTENSION_DISCONNECTED"
   | "SESSION_REVOKED"
   | "WEB_VISIT"
-  | "COMMENT_GENERATED";
+  | "COMMENT_GENERATED"
+  | "COMMENT_DELETED";
 
 export interface IParsedResumeData {
   name?: string;
@@ -135,6 +136,9 @@ export interface IUserPreferences {
 
 export interface IUsageStats {
   commentsGenerated: number;
+  commentsGeneratedToday?: number;
+  tokensUsedTotal?: number;
+  lastResetDate?: string | Date;
   postsRewritten: number;
   connectionRequests: number;
   applicationsTracked: number;

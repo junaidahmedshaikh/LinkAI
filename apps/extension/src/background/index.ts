@@ -259,6 +259,18 @@ onMessage(async (message: BaseMessage): Promise<MessageResponse> => {
       }
     }
 
+    case MessageType.LINKEDIN_GENERATE_COMMENT: {
+      try {
+        const result = await aiCommentService.generate(message.payload as Parameters<typeof aiCommentService.generate>[0]);
+        await usageService.track("FEATURE_CLICKED", "Generated AI comment from widget", {
+          tone: (message.payload as { tone: string }).tone,
+        });
+        return { success: true, data: result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
     case MessageType.AI_GET_COMMENT_HISTORY: {
       try {
         const history = await aiCommentService.getHistory();
