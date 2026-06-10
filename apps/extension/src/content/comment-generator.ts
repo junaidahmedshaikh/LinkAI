@@ -7,6 +7,7 @@
 import { sendMessage, MessageType } from "@/services/messaging.service";
 import type { IGeneratedComment } from "@linkai/types";
 import { persistDebugLog } from "@/utils/debug";
+import { sanitizeGeneratePayload } from "@/utils/comment-payload";
 
 export interface GenerationRequest {
   postContent: string;
@@ -75,12 +76,12 @@ class CommentGenerator {
       const response = await sendMessage<{ comment: IGeneratedComment }>(
         {
           type: MessageType.LINKEDIN_GENERATE_COMMENT,
-          payload: {
+          payload: sanitizeGeneratePayload({
             postContent: request.postContent,
             tone: request.tone,
             postUrl: request.postUrl,
             postAuthor: request.authorName,
-          },
+          }),
         },
         "background"
       );

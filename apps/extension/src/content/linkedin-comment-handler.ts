@@ -1,7 +1,34 @@
 /**
- * LinkedIn Comment Handler
- * Main orchestrator for AI comment generation on LinkedIn
- * Coordinates all modules: detection, injection, extraction, generation
+ * LinkedIn Comment Handler - Main orchestrator for AI comment generation
+ *
+ * FILE PURPOSE:
+ * Coordinates the entire AI comment generation flow on LinkedIn:
+ * 1. Detects when user clicks LinkedIn's native comment button
+ * 2. Waits for comment editor to appear
+ * 3. Injects "AI Comment" button into editor toolbar
+ * 4. Handles button clicks to generate and insert comments
+ * 5. Manages UI state and error notifications
+ *
+ * ARCHITECTURE:
+ * - Acts as facade/orchestrator combining multiple detector modules
+ * - Depends on: commentDetector, commentEditorDetector, commentButtonInjector, postExtractor, commentGenerator
+ * - Used by: content/index.ts when page is LinkedIn feed or post
+ * - Lifecycle: start() on feed pages, stop() when leaving feed
+ *
+ * DATA FLOW:
+ * User clicks comment → commentDetector fires → commentEditorDetector detects editor → 
+ * handleEditorOpened → injectButton → User clicks AI button → handleGenerateClick → 
+ * extractPostData → generateComment → insertCommentIntoEditor
+ *
+ * ERROR HANDLING:
+ * - Auth errors: Show login button with friendly message
+ * - Generation errors: Show error notification with auto-dismiss
+ * - Extraction errors: Graceful degradation with user message
+ *
+ * STATE MANAGEMENT:
+ * - activeEditors Map: Tracks in-flight comment generations
+ * - isInitialized: Prevents duplicate initialization
+ * - unsubscribers: Cleanup function storage for event handlers
  */
 
 import { commentDetector, type CommentClickEvent } from "./comment-detector";
@@ -14,14 +41,48 @@ import { postExtractor } from "./post-extractor";
 import { commentGenerator, type GenerationRequest } from "./comment-generator";
 import { persistDebugLog } from "@/utils/debug";
 
+// ============ CONSTANTS ============
+// Timing constants
+const TOOLBAR_RENDER_DELAY_MS = 100; // LinkedIn renders toolbar async
+const CURSOR_POSITION_DELAY_MS = 50; // Delay before repositioning cursor
+
+// Notification timing
+const AUTH_ERROR_NOTIFICATION_DURATION_MS = 10000; // Longer for auth errors
+const GENERAL_ERROR_NOTIFICATION_DURATION_MS = 6000;
+const NOTIFICATION_FADE_OUT_DURATION_MS = 300;
+
+// UI constraints
+const ERROR_NOTIFICATION_Z_INDEX = "10000";
+const ERROR_NOTIFICATION_MAX_WIDTH = "420px";
+
+// Validation constants
+const MIN_POST_CONTENT_LENGTH = 10;
+
+// Editor state interface
+interface EditorState {
+  isLoading: boolean;
+  postElement: HTMLElement;
+}
+
+// ============ IMPLEMENTATION ============
 class LinkedInCommentHandler {
   private isInitialized = false;
-  private activeEditors: Map<HTMLElement, { isLoading: boolean; postElement: HTMLElement }> =
-    new Map();
+  private activeEditors: Map<HTMLElement, EditorState> = new Map();
   private unsubscribers: Array<() => void> = [];
 
   /**
    * Initialize the comment handler
+   *
+   * WHAT: Starts all detector modules and subscribes to their events
+   * WHY: Called when page is identified as feed/post page
+   * FLOW:
+   * 1. Check if already initialized (prevent duplicates)
+   * 2. Start all detector modules
+   * 3. Subscribe to detector events
+   * 4. Log initialization
+   *
+   * CALLED BY: content/index.ts on feed pages
+   * USED BY: Tests, page monitoring
    */
   start(): void {
     if (this.isInitialized) return;
@@ -29,30 +90,41 @@ class LinkedInCommentHandler {
 
     void persistDebugLog("linkedin-handler", "Starting LinkedIn comment handler");
 
-    // Start detectors
+    // Start all detector modules
     commentDetector.start();
     commentEditorDetector.start();
 
-    // Subscribe to events
+    // Subscribe to their events
     this.subscribeToEvents();
   }
 
   /**
    * Stop the comment handler
+   *
+   * WHAT: Shuts down all listeners and cleanup
+   * WHY: Called when leaving feed page or unloading extension
+   * FLOW:
+   * 1. Check if initialized (prevent double-stop)
+   * 2. Unsubscribe from all events
+   * 3. Stop detector modules
+   * 4. Cleanup injected buttons
+   * 5. Clear state
+   *
+   * IMPORTANT: Clean stop prevents memory leaks and event handler doubles
    */
   stop(): void {
     if (!this.isInitialized) return;
     this.isInitialized = false;
 
-    // Unsubscribe from all events
+    // Unsubscribe from all events (prevents memory leaks)
     this.unsubscribers.forEach((unsub) => unsub());
     this.unsubscribers = [];
 
-    // Stop detectors
+    // Stop detector modules
     commentDetector.stop();
     commentEditorDetector.stop();
 
-    // Clean up injected buttons
+    // Clean up injected buttons from DOM
     commentButtonInjector.cleanup();
 
     void persistDebugLog("linkedin-handler", "Stopped LinkedIn comment handler");
@@ -60,10 +132,16 @@ class LinkedInCommentHandler {
 
   /**
    * Subscribe to detector events
+   *
+   * WHAT: Sets up event handlers for comment and editor detectors
+   * WHY: Orchestrates the flow: comment click → editor detected → button injected
+   *
+   * HANDLERS:
+   * 1. commentDetector.onCommentClick() - Logs comment button clicks
+   * 2. commentEditorDetector.onEditorOpened() - Triggers button injection
    */
   private subscribeToEvents(): void {
-    // When comment button is clicked, we wait for editor to open
-    // (which the EditorDetector will catch)
+    // Handler 1: Comment button clicked (mostly for logging/debugging)
     const unsubComment = commentDetector.onCommentClick((event: CommentClickEvent) => {
       void persistDebugLog("linkedin-handler", "Comment button clicked", {
         timestamp: event.timestamp,
@@ -71,7 +149,7 @@ class LinkedInCommentHandler {
     });
     this.unsubscribers.push(unsubComment);
 
-    // When comment editor opens, inject AI button
+    // Handler 2: Comment editor appeared (main flow trigger)
     const unsubEditor = commentEditorDetector.onEditorOpened((event: EditorOpenedEvent) => {
       this.handleEditorOpened(event);
     });
@@ -80,6 +158,18 @@ class LinkedInCommentHandler {
 
   /**
    * Handle comment editor opening
+   *
+   * WHAT: Injects AI button when editor appears
+   * WHY: This is the entry point to our comment generation UI
+   *
+   * FLOW:
+   * 1. Store editor reference in activeEditors
+   * 2. Wait for toolbar to render (LinkedIn async behavior)
+   * 3. Inject AI button into toolbar
+   * 4. Subscribe to button clicks
+   * 5. Setup cleanup when editor is removed
+   *
+   * TIMING: Uses setTimeout to wait for LinkedIn's async rendering
    */
   private handleEditorOpened(event: EditorOpenedEvent): void {
     const { editor, postElement } = event;
@@ -90,42 +180,73 @@ class LinkedInCommentHandler {
       editorParent: editor.parentElement?.tagName,
     });
 
-    // Track this editor
+    // Store editor state for this generation session
     this.activeEditors.set(editor, {
       isLoading: false,
       postElement,
     });
 
-    // Wait a bit for toolbar to render (LinkedIn renders async)
+    // Wait for toolbar to render before injecting button
+    // LinkedIn renders UI components asynchronously
     setTimeout(() => {
-      // Inject AI button
-      const button = commentButtonInjector.injectButton(editor);
-      if (!button) {
-        void persistDebugLog("linkedin-handler", "Failed to inject button", {
-          editorClass: editor.className,
-          parentTag: editor.parentElement?.tagName,
-        });
-        return;
-      }
+      this.injectButtonAndSetupHandlers(editor, postElement);
+    }, TOOLBAR_RENDER_DELAY_MS);
+  }
 
-      void persistDebugLog("linkedin-handler", "Button injected successfully");
-
-      // Handle button clicks
-      const unsubClick = commentButtonInjector.onButtonClick((_button, clickedEditor) => {
-        if (clickedEditor === editor) {
-          void this.handleGenerateClick(editor, postElement, _button);
-        }
+  /**
+   * Inject button and setup click handlers
+   *
+   * WHAT: Private helper for button injection and handler setup
+   * WHY: Extracted from handleEditorOpened for clarity
+   *
+   * @private
+   */
+  private injectButtonAndSetupHandlers(editor: HTMLElement, postElement: HTMLElement): void {
+    // Try to inject button
+    const button = commentButtonInjector.injectButton(editor);
+    if (!button) {
+      void persistDebugLog("linkedin-handler", "Failed to inject button", {
+        editorClass: editor.className,
+        parentTag: editor.parentElement?.tagName,
       });
+      return;
+    }
 
-      this.unsubscribers.push(unsubClick);
+    void persistDebugLog("linkedin-handler", "Button injected successfully");
 
-      // Clean up when editor is removed from DOM
-      this.setupEditorCleanup(editor);
-    }, 100);
+    // Setup button click handler
+    const unsubClick = commentButtonInjector.onButtonClick((_button, clickedEditor) => {
+      if (clickedEditor === editor) {
+        void this.handleGenerateClick(editor, postElement, _button);
+      }
+    });
+    this.unsubscribers.push(unsubClick);
+
+    // Setup cleanup when editor is removed from DOM
+    this.setupEditorCleanup(editor);
   }
 
   /**
    * Handle AI button click
+   *
+   * WHAT: Main generation flow - extract, generate, insert
+   * WHY: User clicked the AI button
+   *
+   * FLOW:
+   * 1. Check if already generating (prevent duplicate)
+   * 2. Show loading state on button
+   * 3. Extract post content
+   * 4. Call AI generation
+   * 5. Insert into editor on success
+   * 6. Show error on failure
+   * 7. Restore button state
+   *
+   * ERROR HANDLING:
+   * - Post extraction failure: Show error
+   * - Generation failure: Show error with potential login button
+   * - Insertion failure: Show error
+   *
+   * USED BY: Button click handler
    */
   private async handleGenerateClick(
     editor: HTMLElement,
@@ -135,10 +256,10 @@ class LinkedInCommentHandler {
     const editorState = this.activeEditors.get(editor);
     if (!editorState || editorState.isLoading) return;
 
-    // Mark as loading
+    // Prevent duplicate requests
     editorState.isLoading = true;
 
-    // Show loading state on button
+    // Provide UI feedback
     if (button) {
       this.setButtonLoading(button, true);
     }
@@ -147,7 +268,7 @@ class LinkedInCommentHandler {
       console.log(`[LinkAI] Starting comment generation...`);
       void persistDebugLog("linkedin-handler", "Starting comment generation");
 
-      // Extract post data
+      // Step 1: Extract post content
       const postData = postExtractor.extractPostData(postElement);
       console.log(`[LinkAI] Post extracted:`, {
         contentLength: postData.postText.length,
@@ -156,16 +277,16 @@ class LinkedInCommentHandler {
         mediaType: postData.mediaType,
       });
 
-      // Validate post content
-      if (!postData.postText || postData.postText.length < 10) {
+      // Validate minimum content length
+      if (!postData.postText || postData.postText.length < MIN_POST_CONTENT_LENGTH) {
         console.log(`[LinkAI] ❌ Post content too short: ${postData.postText.length} chars`);
         throw new Error("Could not extract meaningful post content. Try a longer post.");
       }
 
-      // Generate comment
+      // Step 2: Request AI generation
       const request: GenerationRequest = {
         postContent: postData.postText,
-        tone: "professional", // Default tone, could be made configurable
+        tone: "professional", // TODO: Make tone configurable via UI
         postUrl: postData.postUrl,
         authorName: postData.authorName,
       };
@@ -173,6 +294,7 @@ class LinkedInCommentHandler {
       console.log(`[LinkAI] Sending to AI backend with ${postData.postText.length} chars of content...`);
       const result = await commentGenerator.generateComment(request);
 
+      // Handle generation result
       if (!result.success || !result.comment) {
         const errorMsg = result.error || "Failed to generate comment";
         console.log(`[LinkAI] ❌ Generation failed: ${errorMsg}`);
@@ -183,9 +305,8 @@ class LinkedInCommentHandler {
         return;
       }
 
+      // Step 3: Insert into editor
       console.log(`[LinkAI] ✓ Comment generated: "${result.comment.text.substring(0, 50)}..."`);
-
-      // Insert comment into editor
       this.insertCommentIntoEditor(editor, result.comment.text);
 
       console.log(`[LinkAI] ✓ Comment inserted into editor`);
@@ -194,11 +315,10 @@ class LinkedInCommentHandler {
       const message = error instanceof Error ? error.message : "Unknown error";
       console.log(`[LinkAI] ❌ Error: ${message}`);
       void persistDebugLog("linkedin-handler", "Error during generation", { error: message });
-      this.showError("Error generating comment");
+      this.showError(message);
     } finally {
+      // Always restore state
       editorState.isLoading = false;
-
-      // Hide loading state on button
       if (button) {
         this.setButtonLoading(button, false);
       }
@@ -206,7 +326,18 @@ class LinkedInCommentHandler {
   }
 
   /**
-   * Set button loading state
+   * Set button UI loading state
+   *
+   * WHAT: Disables/enables button and shows loading indicator
+   * WHY: Provides visual feedback that generation is in progress
+   *
+   * STATES:
+   * - Loading: Opacity 0.6, pointer-events disabled
+   * - Ready: Opacity 1, pointer-events enabled
+   *
+   * @private
+   * @param button - Button element to update
+   * @param isLoading - Whether to show loading state
    */
   private setButtonLoading(button: HTMLElement, isLoading: boolean): void {
     if (isLoading) {
@@ -223,16 +354,34 @@ class LinkedInCommentHandler {
   }
 
   /**
-   * Insert comment text into editor
-   * Handles ProseMirror/Tiptap editor structure used by LinkedIn
+   * Insert comment text into LinkedIn's ProseMirror editor
+   *
+   * WHAT: Places generated text into the comment editor
+   * WHY: User sees generated comment ready to post
+   *
+   * HOW:
+   * 1. Find or create <p> tag in contenteditable div
+   * 2. Set text content
+   * 3. Remove empty state CSS classes
+   * 4. Position cursor at end
+   * 5. Dispatch multiple events for LinkedIn to recognize change
+   *
+   * TECHNICAL NOTES:
+   * - LinkedIn uses ProseMirror/Tiptap for rich text editing
+   * - Editor structure: <div contenteditable> → <p> tag
+   * - Must dispatch input, change, keyup events
+   * - Cursor positioning uses Selection API
+   *
+   * @private
+   * @param editor - The contenteditable editor element
+   * @param text - Generated comment text to insert
    */
   private insertCommentIntoEditor(editor: HTMLElement, text: string): void {
     try {
       console.log(`[LinkAI] Inserting comment into editor...`);
 
-      // Find the <p> tag inside the contenteditable div (ProseMirror structure)
+      // Find or create paragraph element
       let paragraph = editor.querySelector("p");
-      
       if (!paragraph) {
         console.log(`[LinkAI] ⚠️ No <p> tag found, creating one...`);
         paragraph = document.createElement("p");
@@ -240,23 +389,20 @@ class LinkedInCommentHandler {
         editor.appendChild(paragraph);
       }
 
-      // Clear the paragraph content (remove <br> and placeholder)
+      // Clear existing content and set new text
       paragraph.innerHTML = "";
       paragraph.textContent = text;
 
-      // Remove empty state classes
-      paragraph.classList.remove("is-empty");
-      paragraph.classList.remove("is-editor-empty");
-
-      // Remove placeholder attribute if present
+      // Remove empty state indicators
+      paragraph.classList.remove("is-empty", "is-editor-empty");
       paragraph.removeAttribute("data-placeholder");
 
       console.log(`[LinkAI] ✓ Text inserted into <p> tag`);
 
-      // Focus the editor
+      // Focus editor
       editor.focus();
 
-      // Move cursor to end of text
+      // Position cursor at end using Selection API
       const range = document.createRange();
       const sel = window.getSelection();
       if (sel && paragraph.firstChild) {
@@ -267,39 +413,21 @@ class LinkedInCommentHandler {
         console.log(`[LinkAI] ✓ Cursor positioned at end`);
       }
 
-      // Trigger all necessary events to notify LinkedIn
+      // Dispatch events so LinkedIn recognizes the change
       console.log(`[LinkAI] Dispatching change events...`);
-
-      // 1. Input event (most important for contenteditable)
       editor.dispatchEvent(
-        new Event("input", {
-          bubbles: true,
-          cancelable: true,
-        })
+        new Event("input", { bubbles: true, cancelable: true })
+      );
+      editor.dispatchEvent(
+        new Event("change", { bubbles: true, cancelable: true })
+      );
+      editor.dispatchEvent(
+        new KeyboardEvent("keyup", { bubbles: true, cancelable: true })
       );
 
-      // 2. Change event
-      editor.dispatchEvent(
-        new Event("change", {
-          bubbles: true,
-          cancelable: true,
-        })
-      );
-
-      // 3. Keyup event
-      editor.dispatchEvent(
-        new KeyboardEvent("keyup", {
-          bubbles: true,
-          cancelable: true,
-          key: "End",
-          code: "End",
-          keyCode: 35,
-        })
-      );
-
-      // 4. Blur and refocus to trigger validation
+      // Trigger validation
       editor.blur();
-      setTimeout(() => editor.focus(), 50);
+      setTimeout(() => editor.focus(), CURSOR_POSITION_DELAY_MS);
 
       console.log(`[LinkAI] ✓ Comment inserted and events dispatched`);
       void persistDebugLog("linkedin-handler", "Comment inserted into editor", {
@@ -314,18 +442,38 @@ class LinkedInCommentHandler {
   }
 
   /**
-   * Show error message to user
+   * Show error notification to user
+   *
+   * WHAT: Displays error message as fixed notification
+   * WHY: User needs to know what went wrong
+   *
+   * FEATURES:
+   * - Auth errors: Show login button
+   * - Auto-dismiss after timeout
+   * - Animated slideIn and fadeOut
+   * - Styled to match LinkedIn design
+   *
+   * ERROR TYPES:
+   * 1. Auth errors (contains "login", "authentication")
+   *    → Shows clickable "Click to Login" button
+   *    → Longer timeout (10s)
+   * 2. Other errors
+   *    → Simple message with auto-dismiss
+   *    → Shorter timeout (6s)
+   *
+   * @private
+   * @param message - Error message to display
    */
   private showError(message: string): void {
     console.error(`[LinkAI] Error: ${message}`);
 
-    // Check if this is an auth error
+    // Detect error type
     const isAuthError =
       message.toLowerCase().includes("log in") ||
       message.toLowerCase().includes("authentication") ||
       message.toLowerCase().includes("authenticate");
 
-    // Create error notification
+    // Create notification element
     const notification = document.createElement("div");
     notification.style.cssText = `
       position: fixed;
@@ -337,16 +485,16 @@ class LinkedInCommentHandler {
       border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
-      z-index: 10000;
+      z-index: ${ERROR_NOTIFICATION_Z_INDEX};
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      max-width: 420px;
+      max-width: ${ERROR_NOTIFICATION_MAX_WIDTH};
       animation: slideIn 0.3s ease-out;
       line-height: 1.5;
     `;
 
     if (isAuthError) {
-      // Add clickable link for auth errors
+      // Auth error: show with login button
       notification.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <div>❌ ${message}</div>
@@ -364,7 +512,7 @@ class LinkedInCommentHandler {
         </div>
       `;
 
-      // Add button click handler
+      // Add button handlers
       setTimeout(() => {
         const btn = document.getElementById("linkai-login-btn");
         if (btn) {
@@ -382,33 +530,50 @@ class LinkedInCommentHandler {
         }
       }, 0);
     } else {
+      // Generic error: simple message
       notification.textContent = `❌ LinkAI: ${message}`;
     }
 
-    // Add to page
     document.body.appendChild(notification);
 
-    // Auto remove after 8 seconds (longer for auth errors)
-    const removeTimeout = isAuthError ? 10000 : 6000;
+    // Auto-dismiss with fade animation
+    const timeout = isAuthError
+      ? AUTH_ERROR_NOTIFICATION_DURATION_MS
+      : GENERAL_ERROR_NOTIFICATION_DURATION_MS;
+
     setTimeout(() => {
       notification.style.opacity = "0";
-      notification.style.transition = "opacity 0.3s ease-out";
-      setTimeout(() => notification.remove(), 300);
-    }, removeTimeout);
+      notification.style.transition = `opacity ${NOTIFICATION_FADE_OUT_DURATION_MS}ms ease-out`;
+      setTimeout(() => notification.remove(), NOTIFICATION_FADE_OUT_DURATION_MS);
+    }, timeout);
 
-    // Also log to debug
     void persistDebugLog("linkedin-handler", "User error shown", { message, isAuthError });
   }
 
   /**
    * Setup cleanup when editor is removed from DOM
+   *
+   * WHAT: Watches for editor removal and cleans up resources
+   * WHY: Prevents memory leaks and orphaned event handlers
+   *
+   * LOGIC:
+   * 1. Setup MutationObserver on document body
+   * 2. Check if editor still in DOM each mutation
+   * 3. If removed: cleanup button, remove from activeEditors, disconnect observer
+   *
+   * MEMORY SAFETY:
+   * - Each editor gets exactly one observer
+   * - Observer disconnects when editor removed
+   * - Prevents duplicate cleanup attempts
+   *
+   * @private
+   * @param editor - Editor element to watch
    */
   private setupEditorCleanup(editor: HTMLElement): void {
-    // Use MutationObserver to detect when editor is removed
     const observer = new MutationObserver(() => {
-      // Check if editor is still in DOM
+      // Check if editor still exists in DOM
       if (!document.contains(editor)) {
-        // Editor removed, clean up
+        // Editor removed, cleanup resources
         commentButtonInjector.removeButton(editor);
         this.activeEditors.delete(editor);
         observer.disconnect();
@@ -417,7 +582,7 @@ class LinkedInCommentHandler {
       }
     });
 
-    // Watch for removals
+    // Watch for DOM changes
     observer.observe(document.body, {
       childList: true,
       subtree: true,

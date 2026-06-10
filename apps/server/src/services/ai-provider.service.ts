@@ -1,9 +1,46 @@
-import { env } from "../config/env";
+import { env, isProduction } from "../config/env";
 import type { CommentTone, IGeneratedComment } from "@linkai/types";
 
+/**
+ * AI Provider Service - Handles comment generation via OpenAI API
+ *
+ * PURPOSE:
+ * - Generate LinkedIn comments using OpenAI GPT models
+ * - Fallback to mock generation for development/testing
+ * - Handle retry logic and error recovery
+ * - Validate comment output meets requirements (1-3 sentences, <80 words)
+ *
+ * ARCHITECTURE:
+ * - Used by: commentService.generate()
+ * - Depends on: env configuration, OpenAI API
+ * - Provides: IGeneratedComment with text, tone, and token usage
+ *
+ * KEY FEATURES:
+ * - Exponential backoff retry logic (3 attempts)
+ * - Temperature tuning per tone (0.6-0.8 range)
+ * - Word count validation with automatic truncation
+ * - Mock generation when API key unavailable
+ */
+
+// ============ CONSTANTS ============
+// Retry configuration
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
+// OpenAI API configuration
+const OPENAI_API_ENDPOINT = "https://api.openai.com/v1/chat/completions" as const;
+const MAX_TOKENS = 120;
+const MAX_WORD_COUNT = 80;
+const MIN_POST_CONTENT_LENGTH = 10;
+const MAX_POST_CONTENT_LENGTH = 2000;
+
+// HTTP status codes for retry-worthy errors
+const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504] as const;
+
+/**
+ * Tone-specific system prompts for OpenAI
+ * Instructs the model on how to generate comments for different LinkedIn audiences
+ */
 const TONE_INSTRUCTIONS: Record<CommentTone, string> = {
   professional:
     "Write a concise, professional comment that adds substantive value and demonstrates relevant expertise. Reference a specific idea from the post.",
@@ -25,23 +62,73 @@ interface TokenUsageResponse {
   total_tokens: number;
 }
 
+/**
+ * AI Provider Service Implementation
+ * Handles OpenAI API communication and comment generation
+ */
 class AiProviderService {
+  /**
+   * Generate a LinkedIn comment
+   *
+   * FLOW:
+   * 1. Check if OpenAI API key is configured
+   * 2. If yes: Call generateWithOpenAI() with retry logic
+   * 3. If no: Fall back to generateMock() for development
+   *
+   * @param postContent - The LinkedIn post content to comment on
+   * @param tone - The style of comment (professional, friendly, etc)
+   * @param context - Optional metadata (author, user, hashtags)
+   * @returns Generated comment with text, tone, and token usage
+   * @throws Error if both OpenAI and mock generation fail
+   *
+   * USED BY: commentService.generate()
+   */
   async generateComment(
     postContent: string,
     tone: CommentTone,
     context?: { author?: string; userName?: string; userHeadline?: string; hashtags?: string[] }
   ): Promise<IGeneratedComment> {
+    // Use OpenAI if configured, otherwise mock for development
     if (env.OPENAI_API_KEY) {
-      return this.generateWithOpenAI(postContent, tone, context);
+      try {
+        return await this.generateWithOpenAI(postContent, tone, context);
+      } catch (error) {
+        if (!isProduction) {
+          console.warn("[AI Provider] OpenAI failed, using mock fallback:", error);
+          return this.generateMock(postContent, tone, context);
+        }
+        throw error;
+      }
     }
     return this.generateMock(postContent, tone, context);
   }
 
+  /**
+   * Generate comment using OpenAI API with retry logic
+   *
+   * ERROR HANDLING:
+   * - Network errors: Retry with exponential backoff
+   * - Rate limit (429): Retry up to MAX_RETRIES times
+   * - Server errors (5xx): Retry up to MAX_RETRIES times
+   * - Invalid input (4xx): Fail immediately
+   * - Empty response: Throw error
+   *
+   * RESPONSE VALIDATION:
+   * - Word count truncated if exceeds MAX_WORD_COUNT
+   * - Always returns valid IGeneratedComment
+   *
+   * @private
+   * @param postContent - Post text to generate comment for
+   * @param tone - Desired comment tone
+   * @param context - User and post metadata
+   * @returns Generated comment or throws error after retries exhausted
+   */
   private async generateWithOpenAI(
     postContent: string,
     tone: CommentTone,
     context?: { author?: string; userName?: string; userHeadline?: string; hashtags?: string[] }
   ): Promise<IGeneratedComment> {
+    // Build system prompt with tone-specific instructions
     const systemPrompt = `You are a LinkedIn engagement assistant specializing in authentic, valuable comments.
 
 CORE REQUIREMENTS:
@@ -64,22 +151,24 @@ STRICT PROHIBITIONS (Never include these):
 
 OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra text.`;
 
+    // Build user prompt with context data
     const userPrompt = [
       context?.userName
         ? `Commenter: ${context.userName}${context.userHeadline ? ` (${context.userHeadline})` : ""}`
         : "",
       context?.author ? `Post Author: ${context.author}` : "",
       context?.hashtags && context.hashtags.length > 0 ? `Post Topics: ${context.hashtags.join(", ")}` : "",
-      `Post Content:\n${postContent.slice(0, 2000)}`,
+      `Post Content:\n${postContent.slice(0, MAX_POST_CONTENT_LENGTH)}`,
     ]
       .filter(Boolean)
       .join("\n\n");
 
     let lastError: Error | null = null;
 
+    // Retry loop with exponential backoff
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const response = await fetch(OPENAI_API_ENDPOINT, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${env.OPENAI_API_KEY}`,
@@ -91,25 +180,29 @@ OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra tex
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
             ],
-            max_tokens: 120,
+            max_tokens: MAX_TOKENS,
             temperature: this.getTemperatureForTone(tone),
           }),
         });
 
+        // Handle error responses
         if (!response.ok) {
-          const error = await response.text();
-          lastError = new Error(`OpenAI API error (${response.status}): ${error.slice(0, 200)}`);
+          const errorText = await response.text();
+          lastError = new Error(`OpenAI API error (${response.status}): ${errorText.slice(0, 200)}`);
 
-          // Retry on 429 (rate limit) or 5xx errors
-          if (response.status === 429 || response.status >= 500) {
+          // Retry on retryable status codes
+          if (RETRYABLE_STATUS_CODES.includes(response.status as any)) {
             if (attempt < MAX_RETRIES - 1) {
-              await this.delay(RETRY_DELAY_MS * (attempt + 1));
+              // Exponential backoff: 1s, 2s, 4s
+              const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+              await this.delay(delay);
               continue;
             }
           }
           throw lastError;
         }
 
+        // Parse and validate response
         const json = (await response.json()) as {
           choices?: Array<{ message?: { content?: string } }>;
           usage?: TokenUsageResponse;
@@ -120,12 +213,12 @@ OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra tex
           throw new Error("Empty response from OpenAI");
         }
 
-        // Validate response meets requirements
+        // Validate word count and truncate if necessary
         const wordCount = text.split(/\s+/).length;
-        if (wordCount > 80) {
-          console.warn(`[AI Provider] Comment exceeds 80 words (${wordCount}), truncating...`);
+        if (wordCount > MAX_WORD_COUNT) {
+          console.warn(`[AI Provider] Comment exceeds ${MAX_WORD_COUNT} words (${wordCount}), truncating...`);
           return {
-            text: text.split(/\s+/).slice(0, 80).join(" ").trim(),
+            text: text.split(/\s+/).slice(0, MAX_WORD_COUNT).join(" ").trim(),
             tone,
             tokensUsed: json.usage?.total_tokens || 0,
           };
@@ -139,7 +232,8 @@ OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra tex
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         if (attempt < MAX_RETRIES - 1) {
-          await this.delay(RETRY_DELAY_MS * (attempt + 1));
+          const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+          await this.delay(delay);
           continue;
         }
       }
@@ -148,6 +242,25 @@ OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra tex
     throw lastError || new Error("Failed to generate comment after retries");
   }
 
+  /**
+   * Generate comment using mock templates for development/testing
+   *
+   * PURPOSE:
+   * - Provides comment generation without API key
+   * - Useful for development and testing
+   * - Prevents failures when OpenAI API is unavailable
+   *
+   * TEMPLATES:
+   * - 6 tone-specific comment templates
+   * - Each template follows LinkedIn best practices
+   * - Adheres to 80-word max, 1-3 sentence requirements
+   *
+   * @private
+   * @param postContent - Post to mock-comment on
+   * @param tone - Comment style
+   * @param context - Post and user metadata
+   * @returns Generated mock comment
+   */
   private generateMock(
     postContent: string,
     tone: CommentTone,
@@ -156,7 +269,7 @@ OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra tex
     const snippet = postContent.slice(0, 60).replace(/\s+/g, " ");
     const author = context?.author ?? "the author";
 
-    // Templates must follow: 1-3 sentences, <80 words, no banned phrases
+    // Mock templates follow: 1-3 sentences, <80 words, no banned phrases
     const templates: Record<CommentTone, string[]> = {
       professional: [
         `Your point about "${snippet}" aligns with what we're seeing in market trends. This deserves deeper exploration.`,
@@ -200,24 +313,46 @@ OUTPUT: Return ONLY the comment text. No explanations, no markdown, no extra tex
     };
   }
 
+  /**
+   * Get appropriate temperature for tone
+   *
+   * LOGIC:
+   * - Lower temperature (0.6): More focused, consistent (professional, expert)
+   * - Medium temperature (0.65-0.7): Balanced (professional, networking, friendly)
+   * - Higher temperature (0.75-0.8): More creative, varied (thought-leadership, funny)
+   *
+   * USED BY: generateWithOpenAI() for API call configuration
+   *
+   * @private
+   * @param tone - Comment tone/style
+   * @returns Temperature value (0.0-1.0)
+   */
   private getTemperatureForTone(tone: CommentTone): number {
     switch (tone) {
       case "funny":
-        return 0.8;
+        return 0.8; // More creative variation
       case "thought-leadership":
-        return 0.75;
+        return 0.75; // Creative but thoughtful
       case "friendly":
-        return 0.7;
+        return 0.7; // Warm and genuine
       case "networking":
-        return 0.65;
+        return 0.65; // Balanced and personable
       case "industry-expert":
-        return 0.6;
+        return 0.6; // Focused and authoritative
       case "professional":
       default:
-        return 0.65;
+        return 0.65; // Professional standard
     }
   }
 
+  /**
+   * Delay execution for specified milliseconds
+   *
+   * USED BY: Exponential backoff in retry logic
+   *
+   * @private
+   * @param ms - Milliseconds to delay
+   */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

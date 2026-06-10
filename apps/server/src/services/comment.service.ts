@@ -1,5 +1,6 @@
 import { CommentHistory } from "../models/CommentHistory.model";
 import { Profile } from "../models/Profile.model";
+import { User } from "../models/User.model";
 import { aiProviderService } from "./ai-provider.service";
 import { settingsService } from "./settings.service";
 import { activityService } from "./activity.service";
@@ -59,14 +60,10 @@ class CommentService {
     }
 
     // Check rate limit
-    const user = await (this.constructor as any).getUserById?.(userId);
+    const user = await User.findById(userId).lean();
     const dailyLimit = rateLimitService.getCommentLimit(user?.subscriptionPlan || "free");
 
     if ((settings.usageStats.commentsGeneratedToday ?? 0) >= dailyLimit) {
-      const remaining = rateLimitService.getRemainingComments(
-        userId,
-        settings.usageStats.commentsGeneratedToday ?? 0
-      );
       throw new Error(
         `Daily comment limit (${dailyLimit}) exceeded. Please try again tomorrow.`
       );

@@ -1,5 +1,7 @@
 import { sendMessage, MessageType } from "@/services/messaging.service";
 import { persistDebugLog } from "@/utils/debug";
+import { sanitizeGeneratePayload } from "@/utils/comment-payload";
+import { postExtractor } from "@/content/post-extractor";
 import type { CommentTone, IGeneratedComment } from "@linkai/types";
 
 const WIDGET_ID = "linkai-comment-widget";
@@ -284,17 +286,25 @@ class CommentWidget {
     this.showState("generating");
 
     try {
-      // Extract post content from the post element
-      const postContent = this.extractPostContent(this.state.postElement);
+      const postData = postExtractor.extractPostData(this.state.postElement);
+      const postContent = postData.postText.trim();
+
+      if (!postContent || postContent.length < 10) {
+        this.showError("Could not extract enough post content. Try a longer post.");
+        this.showState("error");
+        return;
+      }
 
       // Send message to background script to generate
       const response = await sendMessage<{ comment: IGeneratedComment }>(
         {
           type: MessageType.LINKEDIN_GENERATE_COMMENT,
-          payload: {
+          payload: sanitizeGeneratePayload({
             postContent,
             tone: this.state.currentTone,
-          },
+            postUrl: postData.postUrl,
+            postAuthor: postData.authorName,
+          }),
         }
       );
 
@@ -330,15 +340,14 @@ class CommentWidget {
     } catch (error) {
       console.error("Failed to generate comment:", error);
 
-      // Handle specific error types
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
 
       if (errorMsg.includes("Extension")) {
         this.showError("Extension error. Please refresh the page.");
-      } else if (errorMsg.includes("network")) {
-        this.showError("Network error. Please check your connection and try again.");
+      } else if (errorMsg.toLowerCase().includes("network") || errorMsg.includes("Cannot reach")) {
+        this.showError(errorMsg);
       } else {
-        this.showError("Failed to generate comment. Please try again.");
+        this.showError(errorMsg);
       }
 
       this.showState("error");
@@ -423,34 +432,6 @@ class CommentWidget {
     } catch (error) {
       console.error("Failed to insert comment:", error);
       this.showError("Could not insert comment. Please try manual copy-paste.");
-    }
-  }
-
-  /**
-   * Extract post content from element
-   */
-  private extractPostContent(postElement: HTMLElement): string {
-    try {
-      // Try multiple selectors for post content
-      const selectors = [
-        ".update-components-text",
-        ".feed-shared-text",
-        "[data-test-id='post-content']",
-        ".feed-shared-update-v2 .feed-shared-text-view",
-        ".attributed-text",
-      ];
-
-      for (const selector of selectors) {
-        const element = postElement.querySelector(selector);
-        if (element?.textContent) {
-          return element.textContent.trim();
-        }
-      }
-
-      // Fallback: get all text content
-      return postElement.textContent?.trim().substring(0, 1000) || "Post content";
-    } catch {
-      return "Post content";
     }
   }
 
