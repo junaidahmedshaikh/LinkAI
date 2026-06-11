@@ -17,8 +17,10 @@ const envSchema = z.object({
   LINKEDIN_CLIENT_SECRET: z.string().optional(),
   LINKEDIN_CALLBACK_URL: z.string().url().optional(),
   EMAIL_FROM: z.string().email().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  // OPENAI_API_KEY: z.string().optional(),
+  // OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  GOOGLE_GENERATIVE_AI_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
   UPLOAD_DIR: z.string().default("./uploads"),
   MAX_FILE_SIZE_MB: z.coerce.number().default(5),
 });

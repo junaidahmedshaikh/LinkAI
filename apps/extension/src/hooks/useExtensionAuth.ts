@@ -27,11 +27,17 @@ export function useExtensionAuth() {
           dispatch(setUser(meRes.data.user));
         } else {
           dispatch(logoutAction());
+          dispatch(setAuthError("Session expired. Sign in again or open the web app while logged in to sync."));
         }
       }
     } else {
       dispatch(setUser(null));
       dispatch(setSyncUser(null));
+      dispatch(
+        setAuthError(
+          "Not signed in. Use email/password here, or log in on the LinkAI web app to sync your session."
+        )
+      );
     }
     dispatch(setAuthLoading(false));
   }, [dispatch]);

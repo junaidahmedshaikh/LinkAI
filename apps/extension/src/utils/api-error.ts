@@ -36,6 +36,12 @@ export function extractApiErrorMessage(error: unknown, fallback = "Something wen
   }
 
   if (error instanceof Error && error.message) {
+    if (/Google AI error \(401\)|invalid authentication credentials/i.test(error.message)) {
+      return "AI service authentication failed on the server. Ask your admin to set a valid GOOGLE_GENERATIVE_AI_KEY in the backend .env file.";
+    }
+    if (/Comment generation failed:/i.test(error.message)) {
+      return error.message.replace(/^Comment generation failed:\s*/i, "");
+    }
     return error.message;
   }
 
