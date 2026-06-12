@@ -113,22 +113,6 @@ export default function SidePanelApp() {
         </div>
       </SidebarCard>
 
-      <SidebarCard title="Recent activity">
-        {syncUser?.recentActivities?.length ? (
-          <ul className="space-y-2">
-            {syncUser.recentActivities.slice(0, 3).map((a) => (
-              <li key={a._id} className="text-xs text-muted-foreground">
-                {a.action}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-muted-foreground">No recent activity.</p>
-        )}
-        <a href={`${WEB_APP_URL}/dashboard/activity`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-accent">
-          View all →
-        </a>
-      </SidebarCard>
     </div>
   );
 }

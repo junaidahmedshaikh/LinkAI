@@ -1,10 +1,6 @@
 import { Router } from "express";
 import authRoutes from "./auth.routes";
 import userRoutes from "./user.routes";
-import profileRoutes from "./profile.routes";
-import resumeRoutes from "./resume.routes";
-import linkedInProfileRoutes from "./linkedin-profile.routes";
-import activityRoutes from "./activity.routes";
 import settingsRoutes from "./settings.routes";
 import securityRoutes from "./security.routes";
 import dashboardRoutes from "./dashboard.routes";
@@ -21,10 +17,6 @@ router.get("/health", (_req, res) => {
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
-router.use("/profile", profileRoutes);
-router.use("/resumes", resumeRoutes);
-router.use("/linkedin-profile", linkedInProfileRoutes);
-router.use("/activity", activityRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/security", securityRoutes);
 router.use("/dashboard", dashboardRoutes);

@@ -1,13 +1,10 @@
-import type { IActivity, ILinkedInProfile, IProfile, IResume, IUserSettings, IUsageStats } from "./phase2";
+import type { IUserSettings, IUsageStats } from "./phase2";
 import type { IUser } from "./index";
 
 export type DeviceType = "WEB" | "EXTENSION" | "MOBILE_FUTURE";
 
 export type SyncEventType =
-  | "PROFILE_UPDATED"
   | "SETTINGS_UPDATED"
-  | "LINKEDIN_CONNECTED"
-  | "RESUME_UPDATED"
   | "USAGE_UPDATED"
   | "SESSION_REVOKED"
   | "EXTENSION_CONNECTED"
@@ -17,8 +14,6 @@ export type AuditAction =
   | "LOGIN"
   | "LOGOUT"
   | "PASSWORD_CHANGE"
-  | "PROFILE_UPDATE"
-  | "RESUME_UPLOAD"
   | "EXTENSION_CONNECTED"
   | "EXTENSION_DISCONNECTED"
   | "SETTINGS_CHANGED"
@@ -29,7 +24,6 @@ export type AnalyticsSource = "WEB" | "EXTENSION" | "SYSTEM";
 export type AnalyticsEventType =
   | "WEB_VISIT"
   | "EXTENSION_OPEN"
-  | "PROFILE_VIEW"
   | "JOB_VIEWED"
   | "LINKEDIN_PROFILE_VIEWED"
   | "FEATURE_CLICKED";
@@ -96,37 +90,20 @@ export interface IExtensionConnectPayload {
 export interface IExtensionConnectResponse {
   sessionId: string;
   user: IUser;
-  profile: IProfile | null;
   settings: IUserSettings;
   usage: IUsageStats;
   permissions: IUserPermission;
   featureFlags: IFeatureFlag[];
-  recentActivities: IActivity[];
-  dashboardStats: {
-    profileCompletion: number;
-    resumeCount: number;
-    linkedinConnected: boolean;
-    linkedinProfileScore: number;
-  };
   syncVersion: string;
   serverTime: string;
 }
 
 export interface ISyncUserResponse {
   user: IUser;
-  profile: IProfile | null;
   settings: IUserSettings;
   usage: IUsageStats;
   permissions: IUserPermission;
   featureFlags: IFeatureFlag[];
-  recentActivities: IActivity[];
-  dashboardStats: {
-    profileCompletion: number;
-    resumeCount: number;
-    resumeUploaded: boolean;
-    linkedinConnected: boolean;
-    linkedinProfileScore: number;
-  };
   extensionStatus: IExtensionStatus;
   syncVersion: string;
   serverTime: string;
@@ -139,20 +116,6 @@ export interface IExtensionStatus {
   lastLinkedInPage?: string;
   lastLinkedInUrl?: string;
   activeSessionId?: string;
-}
-
-export interface ISyncProfileResponse {
-  profile: IProfile | null;
-  linkedinProfile: ILinkedInProfile | null;
-  profileCompletion: number;
-  linkedinConnected: boolean;
-  lastSyncedAt?: string;
-}
-
-export interface ISyncResumeResponse {
-  resumes: IResume[];
-  primaryResume: IResume | null;
-  resumeCount: number;
 }
 
 export interface ISyncHeartbeatPayload {

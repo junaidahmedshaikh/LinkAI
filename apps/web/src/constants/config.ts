@@ -15,15 +15,9 @@ export const ROUTES = {
   VERIFY_EMAIL: "/verify-email",
   ONBOARDING: "/onboarding",
   DASHBOARD: "/dashboard",
-  PROFILE: "/dashboard/profile",
-  RESUMES: "/dashboard/resumes",
-  LINKEDIN_PROFILE: "/dashboard/linkedin-profile",
-  ACTIVITY: "/dashboard/activity",
   COMMENTS: "/dashboard/comments",
   SETTINGS: "/dashboard/settings",
-  DEVICES: "/dashboard/devices",
   ADMIN: "/dashboard/admin",
-  PUBLIC_PROFILE: "/profile",
 } as const;
 
 export function assetUrl(path?: string): string {

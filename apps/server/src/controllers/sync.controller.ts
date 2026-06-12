@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { syncService, userContextService } from "../services/sync.service";
-import { activityService } from "../services/activity.service";
 import { analyticsService } from "../services/analytics.service";
 import { auditService } from "../services/audit.service";
 import { sendSuccess, sendError } from "../utils/apiResponse.util";
@@ -10,15 +9,6 @@ class SyncController {
     try {
       const data = await syncService.getUser(req.userId!);
       sendSuccess(res, "Sync user retrieved", data);
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const data = await syncService.getProfile(req.userId!);
-      sendSuccess(res, "Sync profile retrieved", data);
     } catch (error) {
       next(error);
     }
@@ -37,16 +27,6 @@ class SyncController {
     try {
       const usage = await syncService.getUsage(req.userId!);
       sendSuccess(res, "Sync usage retrieved", { usage });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const limit = Math.min(Number(req.query.limit) || 20, 50);
-      const activities = await syncService.getActivity(req.userId!, limit);
-      sendSuccess(res, "Sync activity retrieved", { activities });
     } catch (error) {
       next(error);
     }
@@ -90,10 +70,6 @@ class ExtensionConnectController {
         refreshToken,
       });
 
-      await activityService.log(req.userId!, "EXTENSION_CONNECTED", "Chrome extension connected", {
-        deviceId: req.body.deviceId,
-        version: req.body.extensionVersion,
-      });
       await auditService.log(req.userId!, "EXTENSION_CONNECTED", {
         metadata: { deviceId: req.body.deviceId },
         ipAddress: req.ip,
@@ -113,7 +89,6 @@ class ExtensionConnectController {
     try {
       await syncService.disconnectExtension(req.userId!, req.body.deviceId);
       userContextService.invalidateUser(req.userId!);
-      await activityService.log(req.userId!, "EXTENSION_DISCONNECTED", "Chrome extension disconnected");
       await auditService.log(req.userId!, "EXTENSION_DISCONNECTED", {
         metadata: { deviceId: req.body.deviceId },
       });

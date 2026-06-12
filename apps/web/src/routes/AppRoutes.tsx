@@ -15,13 +15,8 @@ import VerifyEmailPage from "@/pages/VerifyEmailPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import HomePage from "@/pages/HomePage";
 import DashboardHomePage from "@/features/dashboard/pages/DashboardHomePage";
-import ProfilePage from "@/features/profile/pages/ProfilePage";
-import ResumesPage from "@/features/resume/pages/ResumesPage";
-import LinkedInProfilePage from "@/features/linkedin-profile/pages/LinkedInProfilePage";
-import ActivityPage from "@/features/activity/pages/ActivityPage";
 import CommentsPage from "@/features/ai-comments/pages/CommentsPage";
 import SettingsPage from "@/features/settings/pages/SettingsPage";
-import DevicesPage from "@/features/devices/pages/DevicesPage";
 import AdminPage from "@/features/admin/pages/AdminPage";
 
 export function AppRoutes() {
@@ -51,13 +46,8 @@ export function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute requireOnboarding={false} />}>
         <Route element={<DashboardLayout />}>
           <Route index element={<DashboardHomePage />} />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="resumes" element={<ResumesPage />} />
-          <Route path="linkedin-profile" element={<LinkedInProfilePage />} />
-          <Route path="activity" element={<ActivityPage />} />
           <Route path="comments" element={<CommentsPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="devices" element={<DevicesPage />} />
           <Route element={<AdminRoute />}>
             <Route element={<AdminLayout />}>
               <Route path="admin" element={<AdminPage />} />

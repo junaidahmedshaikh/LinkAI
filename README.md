@@ -137,11 +137,8 @@ docker compose up --build
 
 | Route | Description |
 |-------|-------------|
-| `/dashboard` | Overview, stats, activity feed |
-| `/dashboard/profile` | Profile management & avatar |
-| `/dashboard/resumes` | Resume upload & parser |
-| `/dashboard/linkedin-profile` | Manual LinkedIn profile editor |
-| `/dashboard/activity` | Paginated activity log |
+| `/dashboard` | Overview and usage stats |
+| `/dashboard/comments` | AI comment history and tools |
 | `/dashboard/settings` | Account, security, notifications |
 | `/dashboard/admin` | Admin-only (role: `admin`) |
 
@@ -150,20 +147,10 @@ docker compose up --build
 | Method | Endpoint |
 |--------|----------|
 | GET | `/api/dashboard/overview` |
-| GET/PUT | `/api/profile` |
-| POST/DELETE | `/api/profile/avatar` |
-| GET | `/api/profile/public/:userId` |
-| POST | `/api/resumes/upload` |
-| GET/DELETE | `/api/resumes`, `/api/resumes/:id` |
-| PUT | `/api/resumes/:id/primary` |
-| GET/PUT | `/api/linkedin-profile` |
-| GET | `/api/activity?page=&limit=` |
 | GET/PUT | `/api/settings` |
 | PUT | `/api/security/change-password` |
 | POST | `/api/security/logout-all` |
 | GET | `/api/security/sessions` |
-
-Resume files are stored under `apps/server/uploads/` (local storage; S3-ready abstraction included).
 
 ## Phase 3 — Chrome Extension
 
@@ -206,8 +193,6 @@ VITE_EXTENSION_ID=your-extension-id-here
 When you log in on the web app, tokens are pushed to the extension automatically.
 
 **New APIs:** `/api/sync/*`, `/api/extension/connect`, `/api/extension/disconnect`
-
-**Dashboard:** `/dashboard/devices` — manage web and extension sessions.
 
 ## Phase 5 — AI Features
 

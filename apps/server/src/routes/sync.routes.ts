@@ -9,10 +9,8 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/user", syncController.getUser);
-router.get("/profile", syncController.getProfile);
 router.get("/settings", syncController.getSettings);
 router.get("/usage", syncController.getUsage);
-router.get("/activity", syncController.getActivity);
 router.get("/permissions", syncController.getPermissions);
 router.get("/feature-flags", syncController.getFeatureFlags);
 router.post("/heartbeat", validate(syncHeartbeatSchema), syncController.heartbeat);

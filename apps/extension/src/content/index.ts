@@ -5,7 +5,6 @@ import { extractActivePost } from "@/utils/linkedin-post";
 import { insertCommentText } from "@/utils/comment-insert";
 import { persistDebugLog } from "@/utils/debug";
 import { linkedInCommentHandler } from "./linkedin-comment-handler";
-import { sharePostHandler } from "./share-post-handler";
 import type { MessageResponse } from "@/types/messages";
 
 let lastUrl = location.href;
@@ -102,7 +101,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 function init(): void {
   notifyPageChange(location.href);
-  sharePostHandler.start();
   setupUrlWatcher();
   setupMutationObserver();
   setTimeout(runExtraction, 2000);

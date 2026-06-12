@@ -1,7 +1,5 @@
 import type { IExtensionStatus } from "@linkai/types";
 import { Card } from "@/components/ui";
-import { Link } from "react-router-dom";
-import { ROUTES } from "@/constants/config";
 import { cn } from "@/utils/cn";
 
 interface ExtensionStatusCardProps {
@@ -37,9 +35,6 @@ export function ExtensionStatusCard({ status }: ExtensionStatusCardProps) {
           {connected ? "Online" : "Offline"}
         </span>
       </div>
-      <Link to={ROUTES.DEVICES} className="mt-3 inline-block text-xs text-accent hover:underline">
-        Manage devices →
-      </Link>
     </Card>
   );
 }

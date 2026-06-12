@@ -1,6 +1,4 @@
 import { User } from "../models/User.model";
-import { Profile } from "../models/Profile.model";
-import { LinkedInProfile } from "../models/LinkedInProfile.model";
 import { authService } from "./auth.service";
 import { settingsService } from "./settings.service";
 import { activityService } from "./activity.service";
@@ -18,17 +16,11 @@ class ExtensionService {
     if (!userDoc) throw new Error("User not found");
     const user = authService.sanitizeUser(userDoc);
 
-    const [profile, linkedin, settings] = await Promise.all([
-      Profile.findOne({ userId }).lean(),
-      LinkedInProfile.findOne({ userId }).lean(),
-      settingsService.getOrCreate(userId),
-    ]);
+    const settings = await settingsService.getOrCreate(userId);
 
     return {
       user: user as IUser,
       usageStats: { ...settings.usageStats },
-      profileCompletion: profile?.profileScore ?? 0,
-      linkedinConnected: !!(linkedin?.linkedinUrl && linkedin.linkedinUrl.length > 0),
     };
   }
 

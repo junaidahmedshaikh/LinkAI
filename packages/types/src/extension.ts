@@ -22,8 +22,6 @@ export type LinkedInPageType =
 export interface IExtensionMeResponse {
   user: IUser;
   usageStats: IUsageStats;
-  profileCompletion: number;
-  linkedinConnected: boolean;
 }
 
 export interface IExtensionHeartbeatPayload {

@@ -9,14 +9,9 @@ import { logout } from "@/store/authSlice";
 import { clearAuthSession } from "@/utils/authSession";
 
 const navItems = [
-  { to: ROUTES.DASHBOARD, label: "Dashboard", icon: "◫" },
-  { to: ROUTES.PROFILE, label: "Profile", icon: "◎" },
-  { to: ROUTES.RESUMES, label: "Resume Manager", icon: "▤" },
-  { to: ROUTES.LINKEDIN_PROFILE, label: "LinkedIn Profile", icon: "in" },
-  { to: ROUTES.COMMENTS, label: "AI Comments", icon: "✨" },
-  { to: ROUTES.ACTIVITY, label: "Activity", icon: "↻" },
-  { to: ROUTES.DEVICES, label: "Devices", icon: "⬡" },
-  { to: ROUTES.SETTINGS, label: "Settings", icon: "⚙" },
+  { to: ROUTES.DASHBOARD, label: "Dashboard", icon: "D" },
+  { to: ROUTES.COMMENTS, label: "AI Comments", icon: "*" },
+  { to: ROUTES.SETTINGS, label: "Settings", icon: "S" },
 ];
 
 interface SidebarProps {
@@ -82,7 +77,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               )
             }
           >
-            <span className="w-5 text-center text-xs">★</span>
+            <span className="w-5 text-center text-xs">A</span>
             Admin
           </NavLink>
         )}
@@ -93,7 +88,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-red-500/10 hover:text-red-300 transition-colors"
         >
-          <span className="w-5 text-center">⎋</span>
+          <span className="w-5 text-center">X</span>
           Logout
         </button>
       </div>

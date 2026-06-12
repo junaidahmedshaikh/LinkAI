@@ -18,7 +18,6 @@ const analyticsSchema = new Schema<IAnalyticsDocument>(
       enum: [
         "WEB_VISIT",
         "EXTENSION_OPEN",
-        "PROFILE_VIEW",
         "JOB_VIEWED",
         "LINKEDIN_PROFILE_VIEWED",
         "FEATURE_CLICKED",
