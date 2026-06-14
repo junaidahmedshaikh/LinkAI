@@ -28,7 +28,7 @@ ai-linkedin-assistant/
 ## Prerequisites
 
 - **Node.js** 20+
-- **MongoDB** 7+ (local or Docker)
+- **MongoDB** 7+ (standalone or Atlas)
 - **npm** 10+
 
 ## Quick Start
@@ -42,7 +42,7 @@ npm install
 
 ### 2. Environment variables
 
-**Backend** — copy and edit:
+**Backend** - copy and edit:
 
 ```bash
 cp apps/server/.env.example apps/server/.env
@@ -54,13 +54,21 @@ cp apps/server/.env.example apps/server/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-### 3. Start MongoDB (Docker)
+### 3. Start MongoDB
 
-```bash
-docker compose up mongo -d
+Run a standalone MongoDB server locally or use MongoDB Atlas, then set `MONGO_URI` in `apps/server/.env`.
+
+Examples:
+
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/linkai
+MONGO_DB_NAME=linkai
 ```
 
-Or use a local MongoDB instance and set `MONGO_URI` in `apps/server/.env`.
+```env
+MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/linkai
+MONGO_DB_NAME=linkai
+```
 
 ### 4. Build shared packages
 
@@ -117,12 +125,6 @@ LINKEDIN_CALLBACK_URL=http://localhost:5000/api/auth/linkedin/callback
 ```
 
 Without these, OAuth routes return `503` with a configuration message.
-
-## Docker (full stack)
-
-```bash
-docker compose up --build
-```
 
 ## Scripts
 
@@ -202,7 +204,7 @@ When you log in on the web app, tokens are pushed to the extension automatically
 
 **API:** `POST /api/ai/comments/generate`, `GET /api/ai/comments/history`
 
-**Optional:** Set `OPENAI_API_KEY` in `apps/server/.env` for real AI (otherwise dev mock comments).
+**Optional:** Set `DEEPSEEK_API_KEY` in `apps/server/.env` for production AI comment generation.
 
 Rebuild extension after changes: `npm run build:extension`
 

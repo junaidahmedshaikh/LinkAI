@@ -5,7 +5,7 @@
 - **Monorepo** with npm workspaces for shared types and constants
 - **Clean separation**: routes → controllers → services → models
 - **Security-first**: helmet, CORS, rate limits, hashed refresh tokens, HTTP-only cookies
-- **Horizontal scaling**: stateless API, MongoDB connection pooling, JWT-based auth
+- **Horizontal scaling**: stateless API, MongoDB connection pooling against a standalone server or Atlas, JWT-based auth
 
 ## Backend Layers
 
@@ -42,3 +42,4 @@ Roles: `user`, `admin`. Use `authorize('admin')` middleware on admin-only routes
 
 - `email` (unique)
 - `provider` + `providerId` (compound, sparse)
+- Comment generation uses DeepSeek via the backend API, keeping the API key server-side only.

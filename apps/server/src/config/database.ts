@@ -6,6 +6,7 @@ export async function connectDatabase(): Promise<void> {
   mongoose.set("autoIndex", !isProduction);
 
   await mongoose.connect(env.MONGO_URI, {
+    dbName: env.MONGO_DB_NAME,
     maxPoolSize: 50,
     minPoolSize: 5,
     serverSelectionTimeoutMS: 5000,

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -8,6 +9,7 @@ import passport from "passport";
 import { env, isProduction } from "./config/env";
 import { configurePassport } from "./config/passport";
 import apiRoutes from "./routes";
+import { sendError } from "./utils/apiResponse.util";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware";
 
 export function createApp(): express.Application {
@@ -66,6 +68,14 @@ export function createApp(): express.Application {
       maxAge: isProduction ? "7d" : 0,
     })
   );
+
+  app.use("/api", (req, res, next) => {
+    if (mongoose.connection.readyState !== 1) {
+      sendError(res, "Database connection is not ready yet", 503);
+      return;
+    }
+    next();
+  });
 
   app.use("/api", apiRoutes);
 

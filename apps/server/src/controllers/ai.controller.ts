@@ -3,6 +3,12 @@ import { commentService } from "../services/comment.service";
 import { sendSuccess, sendError } from "../utils/apiResponse.util";
 import type { IGenerateCommentRequest } from "@linkai/types";
 
+function firstQueryValue(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value[0];
+  return undefined;
+}
+
 class AiController {
   generateComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -17,8 +23,8 @@ class AiController {
 
   getCommentHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const limit = Math.min(Number(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit) || 20, 100);
-      const offset = Math.max(Number(Array.isArray(req.query.offset) ? req.query.offset[0] : req.query.offset) || 0, 0);
+      const limit = Math.min(Number(firstQueryValue(req.query.limit)) || 20, 100);
+      const offset = Math.max(Number(firstQueryValue(req.query.offset)) || 0, 0);
 
       const { items, total } = await commentService.getHistory(req.userId!, limit, offset);
 
@@ -35,7 +41,7 @@ class AiController {
 
   deleteComment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { id } = req.params;
+      const id = String(req.params.id);
       await commentService.deleteComment(req.userId!, id);
       sendSuccess(res, "Comment deleted successfully", {});
     } catch (error) {
@@ -46,14 +52,13 @@ class AiController {
 
   searchComments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { q } = req.query;
-      if (!q || (Array.isArray(q) ? q[0] : q) === "") {
+      const queryStr = firstQueryValue(req.query.q);
+      if (!queryStr) {
         sendError(res, "Query parameter 'q' is required", 400);
         return;
       }
 
-      const queryStr = Array.isArray(q) ? q[0] : q;
-      const limit = Math.min(Number(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit) || 20, 100);
+      const limit = Math.min(Number(firstQueryValue(req.query.limit)) || 20, 100);
       const results = await commentService.searchHistory(req.userId!, queryStr, limit);
 
       sendSuccess(res, "Search completed", { results, count: results.length });
