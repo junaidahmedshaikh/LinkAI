@@ -12,11 +12,14 @@ class AuthController {
     try {
       const { fullName, email, password } = req.body;
       const sessionContext = securityService.buildWebSessionContext(req, req.body.deviceId);
-      const { user, accessToken, refreshToken } = await authService.register({
-        fullName,
-        email,
-        password,
-      });
+      const { user, accessToken, refreshToken, sessionId } = await authService.register(
+        {
+          fullName,
+          email,
+          password,
+        },
+        sessionContext
+      );
 
       setAuthCookies(res, accessToken, refreshToken);
 
@@ -24,7 +27,8 @@ class AuthController {
         user._id.toString(),
         req.ip,
         req.headers["user-agent"] as string | undefined,
-        sessionContext.deviceId
+        sessionContext.deviceId,
+        sessionId
       );
 
       sendSuccess(
@@ -33,6 +37,7 @@ class AuthController {
         {
           accessToken,
           refreshToken,
+          sessionId,
           user: authService.sanitizeUser(user),
         },
         201
@@ -50,7 +55,11 @@ class AuthController {
     try {
       const { email, password } = req.body;
       const sessionContext = securityService.buildWebSessionContext(req, req.body.deviceId);
-      const { user, accessToken, refreshToken } = await authService.login(email, password);
+      const { user, accessToken, refreshToken, sessionId } = await authService.login(
+        email,
+        password,
+        sessionContext
+      );
 
       setAuthCookies(res, accessToken, refreshToken);
 
@@ -58,26 +67,33 @@ class AuthController {
         user._id.toString(),
         req.ip,
         req.headers["user-agent"] as string | undefined,
-        sessionContext.deviceId
+        sessionContext.deviceId,
+        sessionId
       );
 
       sendSuccess(res, "Logged in successfully", {
         accessToken,
         refreshToken,
+        sessionId,
         user: authService.sanitizeUser(user),
       });
     } catch (error) {
       if (env.NODE_ENV === "development") {
         console.error("[auth.login]", error);
       }
-      sendError(res, "Invalid email or password", 401);
+      const message = error instanceof Error ? error.message : "Invalid email or password";
+      if (message === "Invalid email or password") {
+        sendError(res, message, 401);
+        return;
+      }
+      next(error);
     }
   };
 
   logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (req.userId) {
-        await authService.logout(req.userId);
+        await authService.logout(req.userId, req.sessionId);
         await securityService.recordLogout(
           req.userId,
           req.ip,
@@ -111,9 +127,17 @@ class AuthController {
         refreshToken: newRefresh,
         user: authService.sanitizeUser(user),
       });
-    } catch {
+    } catch (error) {
       clearAuthCookies(res);
-      sendError(res, "Invalid refresh token", 401);
+      if (env.NODE_ENV === "development") {
+        console.error("[auth.refresh]", error);
+      }
+      const message = error instanceof Error ? error.message : "Invalid refresh token";
+      if (message === "Session revoked") {
+        sendError(res, "Session expired or revoked", 401);
+        return;
+      }
+      sendError(res, "Invalid or expired refresh token", 401);
     }
   };
 
@@ -192,8 +216,19 @@ class AuthController {
         return;
       }
       try {
-        const { accessToken, refreshToken } = await authService.generateAuthTokens(user);
+        const sessionContext = securityService.buildWebSessionContext(req);
+        const { accessToken, refreshToken, sessionId } = await authService.generateAuthTokens(
+          user,
+          sessionContext
+        );
         setAuthCookies(res, accessToken, refreshToken);
+        await securityService.recordLogin(
+          user._id.toString(),
+          req.ip,
+          req.headers["user-agent"] as string | undefined,
+          sessionContext.deviceId,
+          sessionId
+        );
         res.redirect(`${env.CLIENT_URL}/dashboard`);
       } catch (error) {
         next(error);
@@ -216,8 +251,19 @@ class AuthController {
         return;
       }
       try {
-        const { accessToken, refreshToken } = await authService.generateAuthTokens(user);
+        const sessionContext = securityService.buildWebSessionContext(req);
+        const { accessToken, refreshToken, sessionId } = await authService.generateAuthTokens(
+          user,
+          sessionContext
+        );
         setAuthCookies(res, accessToken, refreshToken);
+        await securityService.recordLogin(
+          user._id.toString(),
+          req.ip,
+          req.headers["user-agent"] as string | undefined,
+          sessionContext.deviceId,
+          sessionId
+        );
         res.redirect(`${env.CLIENT_URL}/dashboard`);
       } catch (error) {
         next(error);

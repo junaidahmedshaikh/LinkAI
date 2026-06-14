@@ -20,15 +20,20 @@ class SecurityService {
     userId: string,
     ip?: string,
     userAgent?: string,
-    deviceId?: string
+    deviceId?: string,
+    sessionId?: string
   ): Promise<void> {
-    await sessionService.upsertSession({
-      userId,
-      deviceId: deviceId ?? sessionService.generateDeviceId(),
-      deviceType: "WEB",
-      ipAddress: ip,
-      userAgent,
-    });
+    if (sessionId) {
+      await sessionService.touchSession(sessionId);
+    } else {
+      await sessionService.upsertSession({
+        userId,
+        deviceId: deviceId ?? sessionService.generateDeviceId(),
+        deviceType: "WEB",
+        ipAddress: ip,
+        userAgent,
+      });
+    }
     await activityService.log(userId, "LOGIN", "User signed in", { ip, deviceType: "WEB" });
     await auditService.log(userId, "LOGIN", { ipAddress: ip, userAgent });
   }

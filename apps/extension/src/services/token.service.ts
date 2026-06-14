@@ -28,8 +28,10 @@ class TokenService {
   }
 
   async hasValidSession(): Promise<boolean> {
-    const token = await this.getAccessToken();
-    return !!token && token.length > 10;
+    const accessToken = await this.getAccessToken();
+    if (accessToken && accessToken.length > 10) return true;
+    const refreshToken = await this.getRefreshToken();
+    return !!refreshToken && refreshToken.length > 10;
   }
 }
 

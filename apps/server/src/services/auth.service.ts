@@ -131,7 +131,10 @@ class AuthService {
     return { user, ...tokens };
   }
 
-  async logout(userId: string): Promise<void> {
+  async logout(userId: string, sessionId?: string): Promise<void> {
+    if (sessionId) {
+      await sessionService.revokeSession(sessionId, userId);
+    }
     await User.findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } });
   }
 

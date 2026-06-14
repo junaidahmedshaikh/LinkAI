@@ -53,20 +53,24 @@ class SessionService {
     userAgent?: string;
     refreshToken?: string;
   }): Promise<ISessionDevice> {
-    const refreshTokenHash = input.refreshToken ? hashToken(input.refreshToken) : undefined;
+    const update: Record<string, unknown> = {
+      userId: input.userId,
+      deviceId: input.deviceId,
+      deviceType: input.deviceType,
+      browser: input.browser ?? parseBrowser(input.userAgent),
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+      isActive: true,
+      lastActiveAt: new Date(),
+    };
+
+    if (input.refreshToken) {
+      update.refreshTokenHash = hashToken(input.refreshToken);
+    }
+
     const session = await Session.findOneAndUpdate(
       { userId: input.userId, deviceId: input.deviceId },
-      {
-        userId: input.userId,
-        deviceId: input.deviceId,
-        deviceType: input.deviceType,
-        browser: input.browser ?? parseBrowser(input.userAgent),
-        ipAddress: input.ipAddress,
-        userAgent: input.userAgent,
-        refreshTokenHash,
-        isActive: true,
-        lastActiveAt: new Date(),
-      },
+      update,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     return this.serialize(session);

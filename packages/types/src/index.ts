@@ -30,6 +30,7 @@ export interface IUser {
 export interface AuthTokensResponse {
   accessToken: string;
   refreshToken?: string;
+  sessionId?: string;
   user: IUser;
 }
 
