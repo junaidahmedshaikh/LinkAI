@@ -58,30 +58,6 @@ const userSchema = new Schema<IUserDocument>(
       enum: ["local", "google", "linkedin"],
       default: "local",
     },
-    mobileNumber: {
-  type: String,
-  unique: true,
-  sparse: true,
-},
-
-mobileVerified: {
-  type: Boolean,
-  default: false,
-},
-
-otpCode: String,
-otpExpiry: Date,
-otpAttempts: {
-  type: Number,
-  default: 0,
-},
-
-otpResendCount: {
-  type: Number,
-  default: 0,
-},
-
-otpLockedUntil: Date,
     providerId: {
       type: String,
       sparse: true,
@@ -148,7 +124,10 @@ otpLockedUntil: Date,
 
 userSchema.index({ provider: 1, providerId: 1 });
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function (
+  this: IUserDocument,
+  next
+) {
   if (!this.isModified("password") || !this.password) {
     return next();
   }
