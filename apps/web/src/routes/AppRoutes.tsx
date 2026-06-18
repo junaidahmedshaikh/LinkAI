@@ -17,6 +17,7 @@ import HomePage from "@/pages/HomePage";
 import DashboardHomePage from "@/features/dashboard/pages/DashboardHomePage";
 import CommentsPage from "@/features/ai-comments/pages/CommentsPage";
 import SettingsPage from "@/features/settings/pages/SettingsPage";
+import ProfilePage from "@/features/profile/pages/ProfilePage";
 import AdminPage from "@/features/admin/pages/AdminPage";
 
 export function AppRoutes() {
@@ -43,10 +44,14 @@ export function AppRoutes() {
         <Route path={ROUTES.ONBOARDING} element={<OnboardingPage />} />
       </Route>
 
-      <Route path="/dashboard" element={<ProtectedRoute requireOnboarding={false} />}>
+      <Route
+        path="/dashboard"
+        element={<ProtectedRoute requireOnboarding={false} />}
+      >
         <Route element={<DashboardLayout />}>
           <Route index element={<DashboardHomePage />} />
           <Route path="comments" element={<CommentsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route element={<AdminRoute />}>
             <Route element={<AdminLayout />}>

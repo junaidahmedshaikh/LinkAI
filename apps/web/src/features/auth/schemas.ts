@@ -49,8 +49,14 @@ export const onboardingSchema = z.object({
   }),
 });
 
+export const profileSchema = z.object({
+  fullName: z.string().min(2, "Name must be at least 2 characters"),
+  avatar: z.string().url("Enter a valid URL").or(z.literal("")).optional(),
+});
+
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type OnboardingFormData = z.infer<typeof onboardingSchema>;
+export type ProfileFormData = z.infer<typeof profileSchema>;

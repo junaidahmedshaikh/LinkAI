@@ -1,3 +1,5 @@
+import { logger } from "@/utils/logger";
+
 /**
  * Comment Button Detector
  * Detects when users click LinkedIn's native Comment button
@@ -56,16 +58,16 @@ class CommentDetector {
     const commentButton = this.findCommentButton(target);
     if (!commentButton) return;
 
-    console.log(`[LinkAI] Comment button clicked`);
+    logger.log("comment-detector", "Comment button clicked");
 
     // Find the nearest post element
     const postElement = this.findNearestPost(commentButton);
     if (!postElement) {
-      console.log(`[LinkAI] Warning: Could not find post for comment button`);
+      logger.warn("comment-detector", "Could not find post for comment button");
       return;
     }
 
-    console.log(`[LinkAI] Post found, notifying listeners`);
+    logger.log("comment-detector", "Post found, notifying listeners");
 
     // Notify all listeners
     this.listeners.forEach((listener) => {
@@ -116,7 +118,7 @@ class CommentDetector {
     for (let i = 0; i < MAX_LEVELS; i++) {
       if (!current) break;
       if (current.tagName === "ARTICLE") {
-        console.log(`[LinkAI] ✓ Post found: <article> tag at level ${i}`);
+        logger.log("comment-detector", "Post found: article tag", { level: i });
         return current;
       }
       current = current.parentElement;
@@ -136,9 +138,7 @@ class CommentDetector {
       const hasSignificantText = this.containerHasSignificantText(current);
 
       if (hasProfileLink && hasActionButtons && hasSignificantText) {
-        console.log(
-          `[LinkAI] ✓ Post found: semantic combination (profile + actions + text) at level ${i}`
-        );
+        logger.log("comment-detector", "Post found: semantic combination", { level: i });
         return current;
       }
 
@@ -151,23 +151,19 @@ class CommentDetector {
       if (!current) break;
 
       if (current.getAttribute("role") === "article") {
-        console.log(`[LinkAI] ✓ Post found: role="article" at level ${i}`);
+        logger.log("comment-detector", "Post found: role=article", { level: i });
         return current;
       }
 
       if (current.getAttribute("data-urn") || current.getAttribute("data-feed-item-id")) {
-        console.log(
-          `[LinkAI] ✓ Post found: data-urn or data-feed-item-id at level ${i}`
-        );
+        logger.log("comment-detector", "Post found: data attribute", { level: i });
         return current;
       }
 
       current = current.parentElement;
     }
 
-    console.log(
-      `[LinkAI] ❌ Post not found after checking ${MAX_LEVELS} levels from <${element.tagName}>`
-    );
+    logger.warn("comment-detector", "Post not found", { maxLevels: MAX_LEVELS, tag: element.tagName });
     this.logParentChain(element);
     return null;
   }
@@ -253,7 +249,7 @@ class CommentDetector {
       chain.push(info);
       current = current.parentElement;
     }
-    console.log(`[LinkAI] Parent chain: ${chain.join(" > ")}`);
+    logger.log("comment-detector", "Parent chain", { chain: chain.join(" > ") });
   }
 }
 

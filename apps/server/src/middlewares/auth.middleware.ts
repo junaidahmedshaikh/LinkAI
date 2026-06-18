@@ -34,7 +34,7 @@ export async function authenticate(
     const user = await User.findById(payload.userId);
 
     if (!user) {
-      sendError(res, "User not found", 401);
+      sendError(res, "Account not found", 401);
       return;
     }
 
@@ -45,7 +45,7 @@ export async function authenticate(
     req.user = user;
     next();
   } catch {
-    sendError(res, "Invalid or expired access token", 401);
+    sendError(res, "Session expired", 401);
   }
 }
 

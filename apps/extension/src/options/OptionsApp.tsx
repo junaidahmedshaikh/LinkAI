@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useExtensionAuth } from "@/hooks/useExtensionAuth";
-import { WEB_APP_URL } from "@/utils/config";
+import {
+  EXTENSION_VERSION,
+  PRIVACY_POLICY_URL,
+  TERMS_URL,
+  WEB_APP_URL,
+} from "@/utils/config";
 import { Loader } from "@/components/ui/Loader";
 import { SidebarCard } from "@/components/ui/SidebarCard";
 
@@ -34,9 +39,14 @@ export function OptionsApp() {
           <p className="mt-2 text-sm text-muted-foreground">
             Manage your extension session and jump back to the web app when needed.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">Version {EXTENSION_VERSION}</p>
         </header>
 
-        {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            {error}
+          </div>
+        )}
 
         <SidebarCard title="Account">
           {isAuthenticated && user ? (
@@ -57,7 +67,8 @@ export function OptionsApp() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                You are not signed in. Sign in on the web app or in the popup to connect this extension.
+                You are not signed in. Sign in on the web app or in the popup to connect this
+                extension.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
@@ -79,6 +90,27 @@ export function OptionsApp() {
               </div>
             </div>
           )}
+        </SidebarCard>
+
+        <SidebarCard title="Legal">
+          <div className="flex flex-col gap-2 text-sm">
+            <a
+              href={PRIVACY_POLICY_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent hover:underline"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href={TERMS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent hover:underline"
+            >
+              Terms of Service
+            </a>
+          </div>
         </SidebarCard>
       </div>
     </div>

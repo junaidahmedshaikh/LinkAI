@@ -11,36 +11,48 @@ import { FeatureCard } from "@/components/ui/FeatureCard";
 import { UsageCard } from "@/components/ui/UsageCard";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { WEB_APP_URL } from "@/utils/config";
+import { AuthPanel } from "@/components/AuthPanel";
 
 export default function SidePanelApp() {
-  const { isAuthenticated, loading, user, hydrate } = useExtensionAuth();
+  const { isAuthenticated, loading, user, login, register, hydrate, error } =
+    useExtensionAuth();
   const syncUser = useSelector((s: RootState) => s.user);
   const linkedin = useSelector((s: RootState) => s.linkedin);
   const dispatch = useDispatch();
 
   const usage = syncUser?.usage;
   const flags = syncUser?.featureFlags ?? [];
-  const commentsEnabled = flags.find((f) => f.key === "AI_COMMENTS")?.enabled ?? true;
-  const onFeedOrPost = linkedin.pageType === "feed" || linkedin.pageType === "post";
+  const commentsEnabled =
+    flags.find((f) => f.key === "AI_COMMENTS")?.enabled ?? true;
+  const onFeedOrPost =
+    linkedin.pageType === "feed" || linkedin.pageType === "post";
 
   useEffect(() => {
     const listener = (message: {
       type?: string;
       payload?: { pageType: string; url: string; activePost?: unknown };
     }) => {
-      if (message.type === MessageType.LINKEDIN_PAGE_CHANGED && message.payload) {
+      if (
+        message.type === MessageType.LINKEDIN_PAGE_CHANGED &&
+        message.payload
+      ) {
         dispatch(
           setLinkedInContext({
             pageType: message.payload.pageType as typeof linkedin.pageType,
             url: message.payload.url,
             isOnLinkedIn: true,
-          })
+          }),
         );
       }
-      if (message.type === MessageType.LINKEDIN_DATA_EXTRACTED && message.payload) {
-        dispatch(setLinkedInContext({ lastExtracted: message.payload as Record<string, unknown> }));
+      if (
+        message.type === MessageType.LINKEDIN_DATA_EXTRACTED &&
+        message.payload
+      ) {
+        dispatch(
+          setLinkedInContext({
+            lastExtracted: message.payload as Record<string, unknown>,
+          }),
+        );
       }
     };
     chrome.runtime.onMessage.addListener(listener);
@@ -57,14 +69,14 @@ export default function SidePanelApp() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="p-6">
-        <EmptyState
-          title="Sign in required"
-          description="Sign in on the web app or extension popup. Sessions sync automatically."
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <AuthPanel
+          compact
+          loading={loading}
+          error={error}
+          onLogin={login}
+          onRegister={register}
         />
-        <a href={`${WEB_APP_URL}/login`} target="_blank" rel="noreferrer" className="mt-4 block text-center text-sm text-accent">
-          Open web app →
-        </a>
       </div>
     );
   }
@@ -75,11 +87,16 @@ export default function SidePanelApp() {
         <UserAvatar name={user.fullName} size={44} />
         <div>
           <h1 className="font-semibold">LinkAI Assistant</h1>
-          <p className="text-xs text-muted-foreground">Synced with your dashboard</p>
+          <p className="text-xs text-muted-foreground">
+            Synced with your dashboard
+          </p>
         </div>
       </header>
 
-      <CommentGenerator enabled={commentsEnabled} onUsageUpdate={() => void hydrate()} />
+      <CommentGenerator
+        enabled={commentsEnabled}
+        onUsageUpdate={() => void hydrate()}
+      />
 
       {!onFeedOrPost && (
         <SidebarCard title="Tip">
@@ -89,11 +106,23 @@ export default function SidePanelApp() {
         </SidebarCard>
       )}
 
-      <SidebarCard title="LinkedIn context" action={<StatusBadge label={linkedin.pageType} variant={linkedin.isOnLinkedIn ? "success" : "muted"} />}>
+      <SidebarCard
+        title="LinkedIn context"
+        action={
+          <StatusBadge
+            label={linkedin.pageType}
+            variant={linkedin.isOnLinkedIn ? "success" : "muted"}
+          />
+        }
+      >
         {linkedin.url ? (
-          <p className="text-xs text-muted-foreground break-all">{linkedin.url}</p>
+          <p className="text-xs text-muted-foreground break-all">
+            {linkedin.url}
+          </p>
         ) : (
-          <p className="text-xs text-muted-foreground">Navigate to LinkedIn to activate detection.</p>
+          <p className="text-xs text-muted-foreground">
+            Navigate to LinkedIn to activate detection.
+          </p>
         )}
       </SidebarCard>
 
@@ -108,11 +137,13 @@ export default function SidePanelApp() {
 
       <SidebarCard title="More features">
         <div className="grid gap-2">
-          <FeatureCard title="Post rewriter" description="Coming in Phase 5.2" />
+          <FeatureCard
+            title="Post rewriter"
+            description="Coming in Phase 5.2"
+          />
           <FeatureCard title="Easy apply" description="Coming in Phase 5.3" />
         </div>
       </SidebarCard>
-
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  updateProfileSchema,
 } from "../validators/auth.validator";
 import { env } from "../config/env";
 
@@ -30,6 +31,7 @@ router.post("/refresh", authController.refresh);
 router.post("/forgot-password", validate(forgotPasswordSchema), authController.forgotPassword);
 router.post("/reset-password", validate(resetPasswordSchema), authController.resetPassword);
 router.get("/me", authenticate, authController.getMe);
+router.put("/profile", authenticate, validate(updateProfileSchema), authController.updateProfile);
 router.get("/verify-email", authController.verifyEmail);
 
 if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {

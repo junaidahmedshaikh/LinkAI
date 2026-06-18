@@ -23,6 +23,7 @@ export interface IUser {
   role: UserRole;
   emailVerified: boolean;
   profile?: IUserProfile;
+  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +50,11 @@ export interface RegisterPayload {
 export interface LoginPayload {
   email: string;
   password: string;
+}
+
+export interface UpdateProfilePayload {
+  fullName?: string;
+  avatar?: string;
 }
 
 export interface OnboardingPayload {

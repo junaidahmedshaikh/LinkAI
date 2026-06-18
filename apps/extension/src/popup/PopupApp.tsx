@@ -4,6 +4,7 @@ import { MessageType, sendMessage } from "@/services/messaging.service";
 import { WEB_APP_URL } from "@/utils/config";
 import type { RootState } from "@/store";
 import { Loader } from "@/components/ui/Loader";
+import { AuthPanel } from "@/components/AuthPanel";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { UsageCard } from "@/components/ui/UsageCard";
 import { FeatureCard } from "@/components/ui/FeatureCard";
@@ -11,7 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { SidebarCard } from "@/components/ui/SidebarCard";
 
 export default function PopupApp() {
-  const { isAuthenticated, loading, user, logout, error } =
+  const { isAuthenticated, loading, user, login, register, logout, error } =
     useExtensionAuth();
   const profile = useSelector((s: RootState) => s.user);
 
@@ -29,40 +30,21 @@ export default function PopupApp() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="w-[360px] p-5">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20 text-accent font-bold text-lg">
-            L
-          </div>
-          <h1 className="text-lg font-semibold">LinkAI</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Sign in to your account
-          </p>
-        </div>
-        {error && (
-          <p className="mb-3 text-xs text-red-400 text-center">{error}</p>
-        )}
-        <a
-          href={`${WEB_APP_URL}/login`}
-          target="_blank"
-          rel="noreferrer"
-          className="w-full rounded-lg bg-accent py-2.5 text-sm font-medium text-white hover:bg-accent-hover"
-        >
-          Login
-        </a>
-        <a
-          href={`${WEB_APP_URL}/register`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-4 block text-center text-xs text-accent"
-        >
-          Create account →
-        </a>
-      </div>
+      <AuthPanel
+        loading={loading}
+        error={error}
+        onLogin={login}
+        onRegister={register}
+      />
     );
   }
 
   const stats = profile?.usage;
+  const flags = profile?.featureFlags ?? [];
+  const postRewriterEnabled =
+    flags.find((f) => f.key === "AI_POST_REWRITER")?.enabled ?? false;
+  const easyApplyEnabled =
+    flags.find((f) => f.key === "AI_EASY_APPLY")?.enabled ?? false;
 
   return (
     <div className="w-[360px] p-4 space-y-4 max-h-[520px] overflow-y-auto">
@@ -121,14 +103,32 @@ export default function PopupApp() {
             status="Ready"
             onClick={openSidePanel}
           />
-          <FeatureCard
-            title="Post rewriter"
-            description="Improve your LinkedIn content"
-          />
-          <FeatureCard
-            title="Easy apply"
-            description="Smart job applications"
-          />
+          {postRewriterEnabled ? (
+            <FeatureCard
+              title="Post rewriter"
+              description="Improve your LinkedIn content"
+              status="Ready"
+            />
+          ) : (
+            <FeatureCard
+              title="Post rewriter"
+              description="Coming soon"
+              status="Soon"
+            />
+          )}
+          {easyApplyEnabled ? (
+            <FeatureCard
+              title="Easy apply"
+              description="Smart job applications"
+              status="Ready"
+            />
+          ) : (
+            <FeatureCard
+              title="Easy apply"
+              description="Coming soon"
+              status="Soon"
+            />
+          )}
         </div>
       </SidebarCard>
     </div>

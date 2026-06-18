@@ -13,7 +13,7 @@ import {
 import { SidebarCard } from "@/components/ui/SidebarCard";
 import { Loader } from "@/components/ui/Loader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { cn } from "@/utils/cn";
+import { cn } from "@linkai/ui";
 
 const TONE_LABELS: Record<CommentTone, string> = {
   professional: "Professional",

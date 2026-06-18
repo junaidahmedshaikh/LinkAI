@@ -11,6 +11,7 @@ import { clearAuthSession } from "@/utils/authSession";
 const navItems = [
   { to: ROUTES.DASHBOARD, label: "Dashboard", icon: "D" },
   { to: ROUTES.COMMENTS, label: "AI Comments", icon: "*" },
+  { to: ROUTES.PROFILE, label: "Profile", icon: "P" },
   { to: ROUTES.SETTINGS, label: "Settings", icon: "S" },
 ];
 
@@ -36,8 +37,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="flex h-full flex-col border-r border-surface-border bg-surface-elevated/50">
       <div className="flex h-14 items-center gap-2 border-b border-surface-border px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 border border-accent/30">
-          <span className="text-sm font-bold text-accent">L</span>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg  border border-accent/30">
+          {/* <span className="text-sm font-bold text-accent">L</span> */}
+          <img
+            src={
+              "https://res.cloudinary.com/dd9w1bmhf/image/upload/v1781702163/linkai-logo_bnaphm.png"
+            }
+            alt="LinkAI"
+            className="h-10 w-10"
+          />
         </div>
         <span className="font-semibold text-white">LinkAI</span>
       </div>

@@ -4,6 +4,8 @@
  * Looks for contenteditable textbox elements that appear in the DOM
  */
 
+import { logger } from "@/utils/logger";
+
 export interface EditorOpenedEvent {
   editor: HTMLElement;
   postElement: HTMLElement;
@@ -86,7 +88,7 @@ class CommentEditorDetector {
     );
 
     if (editors.length > 0) {
-      console.log(`[LinkAI] Found ${editors.length} potential editors`);
+      logger.log("comment-editor-detector", "Potential editors found", { count: editors.length });
     }
 
     editors.forEach((editor) => {
@@ -98,11 +100,10 @@ class CommentEditorDetector {
       // Verify it's actually a comment editor by checking aria-label
       const ariaLabel = editorElement.getAttribute("aria-label") || "";
       if (!ariaLabel.toLowerCase().includes("comment")) {
-        console.log(`[LinkAI] Skipping editor - aria-label: "${ariaLabel}"`);
         return;
       }
 
-      console.log(`[LinkAI] New comment editor detected with label: "${ariaLabel}"`);
+      logger.log("comment-editor-detector", "Comment editor detected", { ariaLabel });
 
       // Mark as tracked
       this.trackedEditors.add(editorElement);
@@ -110,11 +111,9 @@ class CommentEditorDetector {
       // Find the post this editor belongs to
       const postElement = this.findPostForEditor(editorElement);
       if (!postElement) {
-        console.log(`[LinkAI] Warning: Could not find post for editor`);
+        logger.warn("comment-editor-detector", "Could not find post for editor");
         return;
       }
-
-      console.log(`[LinkAI] Post found for editor, notifying listeners`);
 
       // Notify listeners
       this.listeners.forEach((listener) => {
@@ -141,7 +140,6 @@ class CommentEditorDetector {
     for (let i = 0; i < MAX_LEVELS; i++) {
       if (!current) break;
       if (current.tagName === "ARTICLE") {
-        console.log(`[LinkAI] ✓ Post found for editor: <article> at level ${i}`);
         return current;
       }
       current = current.parentElement;
@@ -157,9 +155,6 @@ class CommentEditorDetector {
       const hasSignificantText = this.containerHasSignificantText(current);
 
       if (hasProfileLink && hasActionButtons && hasSignificantText) {
-        console.log(
-          `[LinkAI] ✓ Post found for editor: semantic combination at level ${i}`
-        );
         return current;
       }
 
@@ -172,23 +167,16 @@ class CommentEditorDetector {
       if (!current) break;
 
       if (current.getAttribute("role") === "article") {
-        console.log(`[LinkAI] ✓ Post found for editor: role="article" at level ${i}`);
         return current;
       }
 
       if (current.getAttribute("data-urn") || current.getAttribute("data-feed-item-id")) {
-        console.log(
-          `[LinkAI] ✓ Post found for editor: data attributes at level ${i}`
-        );
         return current;
       }
 
       current = current.parentElement;
     }
 
-    console.log(
-      `[LinkAI] ❌ Post not found for editor after checking ${MAX_LEVELS} levels`
-    );
     return null;
   }
 

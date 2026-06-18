@@ -1,13 +1,8 @@
-import type {
-  IExtensionActivityPayload,
-  IExtensionHeartbeatPayload,
-  IExtensionMeResponse,
-  LinkedInPageType,
-  IGeneratedComment,
-} from "@linkai/types";
+import type { IUser } from "@linkai/types";
 
 export enum MessageType {
   AUTH_LOGIN = "AUTH_LOGIN",
+  AUTH_REGISTER = "AUTH_REGISTER",
   AUTH_LOGOUT = "AUTH_LOGOUT",
   AUTH_GET_STATE = "AUTH_GET_STATE",
   AUTH_REFRESH = "AUTH_REFRESH",
@@ -40,24 +35,30 @@ export interface BaseMessage<T = MessageType, P = unknown> {
 
 export type LoginPayload = { email: string; password: string };
 
+export type RegisterPayload = { fullName: string; email: string; password: string };
+
 export type GenerateCommentPayload = {
   postContent: string;
   postAuthor?: string;
   postUrl?: string;
-  tone: "professional" | "thought-leadership" | "friendly" | "networking" | "industry-expert" | "funny";
+  tone:
+    | "professional"
+    | "thought-leadership"
+    | "friendly"
+    | "networking"
+    | "industry-expert"
+    | "funny";
 };
 
-export type MessageResponses = {
-  [MessageType.AUTH_LOGIN]: { success: boolean; error?: string };
-  [MessageType.AUTH_GET_STATE]: { isAuthenticated: boolean; userEmail?: string };
-  [MessageType.API_GET_ME]: IExtensionMeResponse | null;
-  [MessageType.LINKEDIN_PAGE_CHANGED]: { pageType: LinkedInPageType; url: string };
-  [MessageType.LINKEDIN_GENERATE_COMMENT]: { comment: IGeneratedComment };
-  [MessageType.PING]: { pong: boolean };
-};
+/** Shared auth success payload for login, register, and refresh. */
+export interface AuthUserResponse {
+  user: IUser;
+}
 
-export type ActivityTrackPayload = IExtensionActivityPayload;
-export type HeartbeatPayload = IExtensionHeartbeatPayload;
+export interface AuthStateResponse {
+  isAuthenticated: boolean;
+  userEmail?: string;
+}
 
 export interface MessageResponse<T = unknown> {
   success: boolean;

@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@linkai/ui";
 
 export function StatusBadge({
   label,

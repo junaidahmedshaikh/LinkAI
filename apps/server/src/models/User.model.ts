@@ -22,6 +22,7 @@ export interface IUserDocument extends Document {
     experienceLevel?: ExperienceLevel;
     onboardingCompleted: boolean;
   };
+  lastLoginAt?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +58,30 @@ const userSchema = new Schema<IUserDocument>(
       enum: ["local", "google", "linkedin"],
       default: "local",
     },
+    mobileNumber: {
+  type: String,
+  unique: true,
+  sparse: true,
+},
+
+mobileVerified: {
+  type: Boolean,
+  default: false,
+},
+
+otpCode: String,
+otpExpiry: Date,
+otpAttempts: {
+  type: Number,
+  default: 0,
+},
+
+otpResendCount: {
+  type: Number,
+  default: 0,
+},
+
+otpLockedUntil: Date,
     providerId: {
       type: String,
       sparse: true,
@@ -90,6 +115,9 @@ const userSchema = new Schema<IUserDocument>(
     emailVerificationToken: {
       type: String,
       select: false,
+    },
+    lastLoginAt: {
+      type: Date,
     },
     profile: {
       jobTitle: { type: String, trim: true },

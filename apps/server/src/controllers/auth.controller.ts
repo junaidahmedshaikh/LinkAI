@@ -43,7 +43,7 @@ class AuthController {
         201
       );
     } catch (error) {
-      if ((error as Error).message === "Email already registered") {
+      if ((error as Error).message === "User already exists") {
         sendError(res, (error as Error).message, 409);
         return;
       }
@@ -180,6 +180,23 @@ class AuthController {
         user: authService.sanitizeUser(user),
       });
     } catch (error) {
+      next(error);
+    }
+  };
+
+  updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { fullName, avatar } = req.body;
+      const user = await authService.updateProfile(req.userId!, { fullName, avatar });
+      sendSuccess(res, "Profile updated successfully", {
+        user: authService.sanitizeUser(user),
+      });
+    } catch (error) {
+      const message = (error as Error).message;
+      if (message === "Account not found") {
+        sendError(res, message, 404);
+        return;
+      }
       next(error);
     }
   };

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "@/store";
 import { removeToast } from "@/store/uiSlice";
-import { cn } from "@/utils/cn";
+import { cn } from "@linkai/ui";
 
 export function NotificationToast() {
   const dispatch = useDispatch();

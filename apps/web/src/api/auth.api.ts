@@ -4,6 +4,7 @@ import type {
   LoginPayload,
   OnboardingPayload,
   RegisterPayload,
+  UpdateProfilePayload,
   IUser,
 } from "@linkai/types";
 import { API_ROUTES } from "@linkai/shared";
@@ -47,6 +48,14 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentUser(): Promise<IUser> {
   const { data } = await apiClient.get<ApiResponse<{ user: IUser }>>(API_ROUTES.AUTH.ME);
+  return data.data!.user;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<IUser> {
+  const { data } = await apiClient.put<ApiResponse<{ user: IUser }>>(
+    API_ROUTES.AUTH.PROFILE,
+    payload
+  );
   return data.data!.user;
 }
 

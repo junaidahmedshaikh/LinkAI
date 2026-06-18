@@ -17,8 +17,14 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-accent/20 via-transparent to-purple-900/20" />
           <div className="relative z-10 flex flex-col justify-between p-12">
             <Link to={ROUTES.HOME} className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/20 border border-accent/40">
-                <span className="text-lg font-bold text-accent">L</span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-accent/40">
+                <img
+                  src={
+                    "https://res.cloudinary.com/dd9w1bmhf/image/upload/v1781702163/linkai-logo_bnaphm.png"
+                  }
+                  alt="LinkAI"
+                  className="h-10 w-10"
+                />
               </div>
               <span className="text-xl font-semibold text-white">LinkAI</span>
             </Link>
@@ -38,10 +44,13 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
                 transition={{ delay: 0.2 }}
                 className="mt-4 text-lg text-muted-foreground max-w-md"
               >
-                AI-powered content, networking insights, and profile optimization — built for professionals.
+                AI-powered content, networking insights, and profile
+                optimization — built for professionals.
               </motion.p>
             </div>
-            <p className="text-sm text-muted">© {new Date().getFullYear()} LinkAI. All rights reserved.</p>
+            <p className="text-sm text-muted">
+              © {new Date().getFullYear()} LinkAI. All rights reserved.
+            </p>
           </div>
         </div>
 
@@ -49,15 +58,23 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           <div className="w-full max-w-md">
             <div className="lg:hidden mb-8 text-center">
               <Link to={ROUTES.HOME} className="inline-flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/20 border border-accent/30">
-                  <span className="font-bold text-accent">L</span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg  border border-accent/30">
+                  <img
+                    src={
+                      "https://res.cloudinary.com/dd9w1bmhf/image/upload/v1781702163/linkai-logo_bnaphm.png"
+                    }
+                    alt="LinkAI"
+                    className="h-10 w-10"
+                  />
                 </div>
                 <span className="font-semibold text-white">LinkAI</span>
               </Link>
             </div>
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-white">{title}</h2>
-              {subtitle && <p className="mt-2 text-muted-foreground">{subtitle}</p>}
+              {subtitle && (
+                <p className="mt-2 text-muted-foreground">{subtitle}</p>
+              )}
             </div>
             {children}
           </div>

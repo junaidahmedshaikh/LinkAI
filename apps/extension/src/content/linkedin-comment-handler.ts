@@ -39,12 +39,12 @@ import {
 import { commentButtonInjector } from "./comment-button-injector";
 import { postExtractor } from "./post-extractor";
 import { commentGenerator, type GenerationRequest } from "./comment-generator";
+import { insertIntoLinkedInEditor } from "@/content/utils/prosemirror-insert";
 import { persistDebugLog } from "@/utils/debug";
+import { logger } from "@/utils/logger";
 
 // ============ CONSTANTS ============
-// Timing constants
-const TOOLBAR_RENDER_DELAY_MS = 100; // LinkedIn renders toolbar async
-const CURSOR_POSITION_DELAY_MS = 50; // Delay before repositioning cursor
+const TOOLBAR_RENDER_DELAY_MS = 100;
 
 // Notification timing
 const AUTH_ERROR_NOTIFICATION_DURATION_MS = 10000; // Longer for auth errors
@@ -265,21 +265,22 @@ class LinkedInCommentHandler {
     }
 
     try {
-      console.log(`[LinkAI] Starting comment generation...`);
+      logger.log("linkedin-handler", "Starting comment generation");
       void persistDebugLog("linkedin-handler", "Starting comment generation");
 
       // Step 1: Extract post content
       const postData = postExtractor.extractPostData(postElement);
-      console.log(`[LinkAI] Post extracted:`, {
+      logger.log("linkedin-handler", "Post extracted", {
         contentLength: postData.postText.length,
-        contentPreview: postData.postText.substring(0, 100),
         author: postData.authorName,
         mediaType: postData.mediaType,
       });
 
       // Validate minimum content length
       if (!postData.postText || postData.postText.length < MIN_POST_CONTENT_LENGTH) {
-        console.log(`[LinkAI] ❌ Post content too short: ${postData.postText.length} chars`);
+        logger.warn("linkedin-handler", "Post content too short", {
+          length: postData.postText.length,
+        });
         throw new Error("Could not extract meaningful post content. Try a longer post.");
       }
 
@@ -291,13 +292,15 @@ class LinkedInCommentHandler {
         authorName: postData.authorName,
       };
 
-      console.log(`[LinkAI] Sending to AI backend with ${postData.postText.length} chars of content...`);
+      logger.log("linkedin-handler", "Sending to AI backend", {
+        contentLength: postData.postText.length,
+      });
       const result = await commentGenerator.generateComment(request);
 
       // Handle generation result
       if (!result.success || !result.comment) {
         const errorMsg = result.error || "Failed to generate comment";
-        console.log(`[LinkAI] ❌ Generation failed: ${errorMsg}`);
+        logger.warn("linkedin-handler", "Generation failed", { error: errorMsg });
         void persistDebugLog("linkedin-handler", "Generation failed", {
           error: errorMsg,
         });
@@ -306,14 +309,12 @@ class LinkedInCommentHandler {
       }
 
       // Step 3: Insert into editor
-      console.log(`[LinkAI] ✓ Comment generated: "${result.comment.text.substring(0, 50)}..."`);
+      logger.log("linkedin-handler", "Comment generated");
       this.insertCommentIntoEditor(editor, result.comment.text);
-
-      console.log(`[LinkAI] ✓ Comment inserted into editor`);
       void persistDebugLog("linkedin-handler", "Comment generated and inserted");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      console.log(`[LinkAI] ❌ Error: ${message}`);
+      logger.error("linkedin-handler", message);
       void persistDebugLog("linkedin-handler", "Error during generation", { error: message });
       this.showError(message);
     } finally {
@@ -344,12 +345,12 @@ class LinkedInCommentHandler {
       button.style.opacity = "0.6";
       button.style.pointerEvents = "none";
       button.title = "Generating comment...";
-      console.log(`[LinkAI] Button disabled (loading)`);
+      logger.log("linkedin-handler", "Button disabled (loading)");
     } else {
       button.style.opacity = "1";
       button.style.pointerEvents = "auto";
       button.title = "Generate AI comment with LinkAI";
-      console.log(`[LinkAI] Button enabled (ready)`);
+      logger.log("linkedin-handler", "Button enabled (ready)");
     }
   }
 
@@ -377,67 +378,14 @@ class LinkedInCommentHandler {
    * @param text - Generated comment text to insert
    */
   private insertCommentIntoEditor(editor: HTMLElement, text: string): void {
-    try {
-      console.log(`[LinkAI] Inserting comment into editor...`);
-
-      // Find or create paragraph element
-      let paragraph = editor.querySelector("p");
-      if (!paragraph) {
-        console.log(`[LinkAI] ⚠️ No <p> tag found, creating one...`);
-        paragraph = document.createElement("p");
-        editor.innerHTML = "";
-        editor.appendChild(paragraph);
-      }
-
-      // Clear existing content and set new text
-      paragraph.innerHTML = "";
-      paragraph.textContent = text;
-
-      // Remove empty state indicators
-      paragraph.classList.remove("is-empty", "is-editor-empty");
-      paragraph.removeAttribute("data-placeholder");
-
-      console.log(`[LinkAI] ✓ Text inserted into <p> tag`);
-
-      // Focus editor
-      editor.focus();
-
-      // Position cursor at end using Selection API
-      const range = document.createRange();
-      const sel = window.getSelection();
-      if (sel && paragraph.firstChild) {
-        range.setStart(paragraph.firstChild, text.length);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        console.log(`[LinkAI] ✓ Cursor positioned at end`);
-      }
-
-      // Dispatch events so LinkedIn recognizes the change
-      console.log(`[LinkAI] Dispatching change events...`);
-      editor.dispatchEvent(
-        new Event("input", { bubbles: true, cancelable: true })
-      );
-      editor.dispatchEvent(
-        new Event("change", { bubbles: true, cancelable: true })
-      );
-      editor.dispatchEvent(
-        new KeyboardEvent("keyup", { bubbles: true, cancelable: true })
-      );
-
-      // Trigger validation
-      editor.blur();
-      setTimeout(() => editor.focus(), CURSOR_POSITION_DELAY_MS);
-
-      console.log(`[LinkAI] ✓ Comment inserted and events dispatched`);
+    const inserted = insertIntoLinkedInEditor(editor, text);
+    if (inserted) {
       void persistDebugLog("linkedin-handler", "Comment inserted into editor", {
         charCount: text.length,
         elementType: "ProseMirror",
       });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      console.log(`[LinkAI] ❌ Failed to insert comment: ${message}`);
-      void persistDebugLog("linkedin-handler", "Failed to insert comment", { error: message });
+    } else {
+      void persistDebugLog("linkedin-handler", "Failed to insert comment");
     }
   }
 
@@ -465,7 +413,7 @@ class LinkedInCommentHandler {
    * @param message - Error message to display
    */
   private showError(message: string): void {
-    console.error(`[LinkAI] Error: ${message}`);
+    logger.error("linkedin-handler", message);
 
     // Detect error type
     const isAuthError =
@@ -517,7 +465,7 @@ class LinkedInCommentHandler {
         const btn = document.getElementById("linkai-login-btn");
         if (btn) {
           btn.addEventListener("click", () => {
-            console.log(`[LinkAI] Opening login popup...`);
+            logger.log("linkedin-handler", "Opening login options");
             chrome.runtime.openOptionsPage?.();
             notification.remove();
           });

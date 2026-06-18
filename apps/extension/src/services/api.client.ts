@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { API_ROUTES } from "@linkai/shared";
-import { API_BASE_URL } from "@/utils/config";
+import { API_BASE_URL, EXTENSION_VERSION } from "@/utils/config";
 import { tokenService } from "./token.service";
 import { storageService } from "./storage.service";
 import { debugLog } from "@/utils/debug";
@@ -9,7 +9,10 @@ export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   timeout: 15000,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    "X-Extension-Version": EXTENSION_VERSION,
+  },
 });
 
 apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {

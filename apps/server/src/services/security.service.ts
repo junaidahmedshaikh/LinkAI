@@ -8,9 +8,18 @@ import type { DeviceType, ISessionDevice } from "@linkai/types";
 
 class SecurityService {
   buildWebSessionContext(req: { ip?: string; headers: Record<string, unknown> }, deviceId?: string) {
+    return this.buildSessionContext(req, deviceId);
+  }
+
+  buildSessionContext(
+    req: { ip?: string; headers: Record<string, unknown> },
+    deviceId?: string,
+    deviceType?: DeviceType
+  ) {
+    const isExtension = !!req.headers["x-extension-version"];
     return {
       deviceId: deviceId ?? sessionService.generateDeviceId(),
-      deviceType: "WEB" as DeviceType,
+      deviceType: deviceType ?? (isExtension ? ("EXTENSION" as DeviceType) : ("WEB" as DeviceType)),
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"] as string | undefined,
     };

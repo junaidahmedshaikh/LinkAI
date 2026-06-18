@@ -1,16 +1,16 @@
-import { IS_DEV } from "./config";
+import { logger, IS_DEV } from "./logger";
+
+export { IS_DEV };
 
 export function debugLog(scope: string, message: string, data?: unknown): void {
-  if (!IS_DEV) return;
-  const prefix = `[LinkAI:${scope}]`;
-  if (data !== undefined) {
-    console.log(prefix, message, data);
-  } else {
-    console.log(prefix, message);
-  }
+  logger.log(scope, message, data);
 }
 
-export async function persistDebugLog(scope: string, message: string, data?: unknown): Promise<void> {
+export async function persistDebugLog(
+  scope: string,
+  message: string,
+  data?: unknown
+): Promise<void> {
   debugLog(scope, message, data);
   if (!IS_DEV) return;
   try {
@@ -20,6 +20,6 @@ export async function persistDebugLog(scope: string, message: string, data?: unk
     const next = [...(logs as unknown[]), entry].slice(-100);
     await chrome.storage.local.set({ [key]: next });
   } catch {
-    // ignore
+    // ignore storage failures in debug mode
   }
 }

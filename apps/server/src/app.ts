@@ -70,8 +70,12 @@ export function createApp(): express.Application {
   );
 
   app.use("/api", (req, res, next) => {
+    if (req.path === "/health") {
+      next();
+      return;
+    }
     if (mongoose.connection.readyState !== 1) {
-      sendError(res, "Database connection is not ready yet", 503);
+      sendError(res, "Database connection failed", 503);
       return;
     }
     next();

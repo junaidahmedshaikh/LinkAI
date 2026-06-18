@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from "react";
+import { logger } from "@/utils/logger";
 
 interface Props {
   children: ReactNode;
@@ -17,7 +18,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("[LinkAI UI Error]", error, info);
+    logger.error("ui", error.message, info.componentStack);
   }
 
   render() {

@@ -15,7 +15,7 @@ export function errorHandler(
   console.error("Unhandled error:", err);
 
   if (err.name === "MongoServerError" && (err as { code?: number }).code === 11000) {
-    sendError(res, "Email already in use", 409);
+    sendError(res, "User already exists", 409);
     return;
   }
 

@@ -32,6 +32,11 @@ export const resetPasswordSchema = z.object({
     .regex(/[0-9]/, "Password must contain at least one number"),
 });
 
+export const updateProfileSchema = z.object({
+  fullName: z.string().min(2, "Name must be at least 2 characters").max(120).optional(),
+  avatar: z.string().url("Avatar must be a valid URL").or(z.literal("")).optional(),
+});
+
 export const onboardingSchema = z.object({
   jobTitle: z.string().min(2).max(100),
   industry: z.string().min(2).max(100),

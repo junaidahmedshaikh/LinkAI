@@ -1,14 +1,17 @@
 import { createApp } from "./app";
 import { connectDatabase } from "./config/database";
 import { env } from "./config/env";
+import dns from "node:dns";
 
+dns.setDefaultResultOrder("ipv4first");
 async function connectDatabaseWithRetry(): Promise<void> {
   for (;;) {
     try {
       await connectDatabase();
       return;
     } catch (error) {
-      console.error("MongoDB connection failed, retrying in 5 seconds:", error);
+      console.error("MongoDB connection failed");
+console.dir(error, { depth: null });
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }

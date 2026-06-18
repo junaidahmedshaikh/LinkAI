@@ -94,7 +94,7 @@ class AuthService {
   }, sessionContext?: AuthSessionContext): Promise<{ user: IUserDocument; accessToken: string; refreshToken: string; sessionId?: string }> {
     const existing = await User.findOne({ email: data.email.toLowerCase() });
     if (existing) {
-      throw new Error("Email already registered");
+      throw new Error("User already exists");
     }
 
     const verificationToken = generateEmailVerificationToken();
@@ -105,6 +105,7 @@ class AuthService {
       password: data.password,
       provider: "local",
       emailVerificationToken: verificationToken,
+      lastLoginAt: new Date(),
     });
 
     const tokens = await this.generateAuthTokens(user, sessionContext);
@@ -126,6 +127,9 @@ class AuthService {
     if (!isMatch) {
       throw new Error("Invalid email or password");
     }
+
+    user.lastLoginAt = new Date();
+    await user.save({ validateBeforeSave: false });
 
     const tokens = await this.generateAuthTokens(user, sessionContext);
     return { user, ...tokens };
@@ -272,6 +276,26 @@ class AuthService {
     return user;
   }
 
+  async updateProfile(
+    userId: string,
+    data: { fullName?: string; avatar?: string }
+  ): Promise<IUserDocument> {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("Account not found");
+    }
+
+    if (data.fullName !== undefined) {
+      user.fullName = data.fullName.trim();
+    }
+    if (data.avatar !== undefined) {
+      user.avatar = data.avatar;
+    }
+
+    await user.save();
+    return user;
+  }
+
   sanitizeUser(user: IUserDocument) {
     const obj = user.toJSON();
     return {
@@ -284,6 +308,7 @@ class AuthService {
       role: obj.role,
       emailVerified: obj.emailVerified,
       profile: obj.profile,
+      lastLoginAt: obj.lastLoginAt,
       createdAt: obj.createdAt,
       updatedAt: obj.updatedAt,
     };

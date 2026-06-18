@@ -1,4 +1,5 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import authRoutes from "./auth.routes";
 import userRoutes from "./user.routes";
 import settingsRoutes from "./settings.routes";
@@ -12,7 +13,12 @@ import aiRoutes from "./ai.routes";
 const router = Router();
 
 router.get("/health", (_req, res) => {
-  res.json({ success: true, message: "LinkAI API is running" });
+  const dbConnected = mongoose.connection.readyState === 1;
+  res.status(dbConnected ? 200 : 503).json({
+    success: dbConnected,
+    message: dbConnected ? "LinkAI API is running" : "Database connection failed",
+    database: dbConnected ? "connected" : "disconnected",
+  });
 });
 
 router.use("/auth", authRoutes);

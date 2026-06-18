@@ -14,12 +14,17 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@linkai/shared": path.resolve(__dirname, "../../packages/shared/src/index.ts"),
       "@linkai/types": path.resolve(__dirname, "../../packages/types/src/index.ts"),
+      "@linkai/ui": path.resolve(__dirname, "../../packages/ui/src/index.ts"),
     },
   },
-  // CRXJS dev server — service-worker-loader.js imports from this port
   server: {
     port: 5174,
     strictPort: true,
     hmr: { port: 5174 },
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
   },
 });

@@ -38,11 +38,19 @@ export default function RegisterPage() {
         return;
       }
       dispatch(loginAction(data.user));
-      establishAuthSession(queryClient, data.user, data.accessToken, data.refreshToken);
+      establishAuthSession(
+        queryClient,
+        data.user,
+        data.accessToken,
+        data.refreshToken,
+      );
       navigate(ROUTES.DASHBOARD, { replace: true });
     },
     onError: (error: AxiosError<ApiResponse>) => {
-      setApiError(error.response?.data?.message || "Registration failed. Please try again.");
+      setApiError(
+        error.response?.data?.message ||
+          "Registration failed. Please try again.",
+      );
     },
   });
 
@@ -52,9 +60,14 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthLayout title="Create your account" subtitle="Start your AI-powered LinkedIn journey">
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start your AI-powered LinkedIn journey"
+    >
       <Card>
-        {apiError && <Alert variant="error" message={apiError} className="mb-6" />}
+        {apiError && (
+          <Alert variant="error" message={apiError} className="mb-6" />
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Input
@@ -94,7 +107,9 @@ export default function RegisterPage() {
             <div className="w-full border-t border-surface-border" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-surface-card px-2 text-muted">or sign up with</span>
+            <span className="bg-surface-card px-2 text-muted">
+              or sign up with
+            </span>
           </div>
         </div>
 
@@ -102,7 +117,10 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to={ROUTES.LOGIN} className="text-accent hover:text-accent-hover font-medium">
+          <Link
+            to={ROUTES.LOGIN}
+            className="text-accent hover:text-accent-hover font-medium"
+          >
             Sign in
           </Link>
         </p>

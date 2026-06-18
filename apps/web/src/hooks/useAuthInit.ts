@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import { useAppDispatch, useAppSelector } from "@/hooks/useAppDispatch";
 import { setUser, setLoading, logout } from "@/store/authSlice";
-import { getAccessToken } from "@/api/axios";
+import { getAccessToken, getRefreshToken } from "@/api/axios";
 import * as authApi from "@/api/auth.api";
 import { clearAuthSession, CURRENT_USER_QUERY_KEY } from "@/utils/authSession";
+import { syncAuthToExtension } from "@/utils/extensionBridge";
 import { useQueryClient } from "@tanstack/react-query";
 
 /**
@@ -37,6 +38,10 @@ export function useAuthInit() {
 
     if (data) {
       dispatch(setUser(data));
+      const accessToken = getAccessToken();
+      if (accessToken) {
+        syncAuthToExtension(accessToken, getRefreshToken() ?? undefined);
+      }
     }
   }, [data, hasToken, dispatch]);
 

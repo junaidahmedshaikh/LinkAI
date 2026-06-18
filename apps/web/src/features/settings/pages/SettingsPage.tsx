@@ -33,7 +33,11 @@ export default function SettingsPage() {
   });
 
   const passwordForm = useForm({
-    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
   });
 
   useEffect(() => {
@@ -65,8 +69,10 @@ export default function SettingsPage() {
 
   const passwordMutation = useMutation({
     mutationFn: () => {
-      const { currentPassword, newPassword, confirmPassword } = passwordForm.getValues();
-      if (newPassword !== confirmPassword) throw new Error("Passwords do not match");
+      const { currentPassword, newPassword, confirmPassword } =
+        passwordForm.getValues();
+      if (newPassword !== confirmPassword)
+        throw new Error("Passwords do not match");
       return settingsApi.changePassword(currentPassword, newPassword);
     },
     onSuccess: () => {
@@ -91,27 +97,60 @@ export default function SettingsPage() {
 
       <SettingsSection title="Account" description="Your account information">
         <div className="grid gap-2 text-sm">
-          <p><span className="text-muted">Name:</span> <span className="text-white">{user?.fullName}</span></p>
-          <p><span className="text-muted">Email:</span> <span className="text-white">{user?.email}</span></p>
-          <p><span className="text-muted">Plan:</span> <span className="text-white capitalize">{user?.subscriptionPlan}</span></p>
+          <p>
+            <span className="text-muted">Name:</span>{" "}
+            <span className="text-white">{user?.fullName}</span>
+          </p>
+          <p>
+            <span className="text-muted">Email:</span>{" "}
+            <span className="text-white">{user?.email}</span>
+          </p>
+          <p>
+            <span className="text-muted">Plan:</span>{" "}
+            <span className="text-white capitalize">
+              {user?.subscriptionPlan}
+            </span>
+          </p>
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Notifications" description="Manage email preferences">
-        {["emailNotifications", "productUpdates", "featureAnnouncements", "marketingEmails"].map((key) => (
+      <SettingsSection
+        title="Notifications"
+        description="Manage email preferences"
+      >
+        {[
+          "emailNotifications",
+          "productUpdates",
+          "featureAnnouncements",
+          "marketingEmails",
+        ].map((key) => (
           <label key={key} className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" className="rounded border-surface-border" {...notifForm.register(key as "emailNotifications")} />
-            <span className="text-sm text-zinc-300 capitalize">{key.replace(/([A-Z])/g, " $1")}</span>
+            <input
+              type="checkbox"
+              className="rounded border-surface-border"
+              {...notifForm.register(key as "emailNotifications")}
+            />
+            <span className="text-sm text-zinc-300 capitalize">
+              {key.replace(/([A-Z])/g, " $1")}
+            </span>
           </label>
         ))}
-        <Button onClick={() => settingsMutation.mutate()} isLoading={settingsMutation.isPending}>Save notifications</Button>
+        <Button
+          onClick={() => settingsMutation.mutate()}
+          isLoading={settingsMutation.isPending}
+        >
+          Save notifications
+        </Button>
       </SettingsSection>
 
       <SettingsSection title="Preferences">
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className="text-sm text-zinc-300">Theme</label>
-            <select className="mt-1 w-full rounded-lg border border-surface-border bg-surface-elevated px-3 py-2 text-sm text-white" {...notifForm.register("theme")}>
+            <select
+              className="mt-1 w-full rounded-lg border border-surface-border bg-surface-elevated px-3 py-2 text-sm text-white"
+              {...notifForm.register("theme")}
+            >
               <option value="dark">Dark</option>
               <option value="light">Light</option>
               <option value="system">System</option>
@@ -120,23 +159,57 @@ export default function SettingsPage() {
           <Input label="Language" {...notifForm.register("language")} />
           <Input label="Timezone" {...notifForm.register("timezone")} />
         </div>
-        <Button onClick={() => settingsMutation.mutate()} isLoading={settingsMutation.isPending}>Save preferences</Button>
+        <Button
+          onClick={() => settingsMutation.mutate()}
+          isLoading={settingsMutation.isPending}
+        >
+          Save preferences
+        </Button>
       </SettingsSection>
 
       <SettingsSection title="Security" description="Password and sessions">
         {user?.provider !== "local" ? (
-          <Alert variant="info" message="Password change is only available for email/password accounts." />
+          <Alert
+            variant="info"
+            message="Password change is only available for email/password accounts."
+          />
         ) : (
-          <form onSubmit={passwordForm.handleSubmit(() => passwordMutation.mutate())} className="space-y-4 max-w-md">
+          <form
+            onSubmit={passwordForm.handleSubmit(() =>
+              passwordMutation.mutate(),
+            )}
+            className="space-y-4 max-w-md"
+          >
             {pwError && <Alert variant="error" message={pwError} />}
-            <Input label="Current password" type="password" {...passwordForm.register("currentPassword", { required: true })} />
-            <Input label="New password" type="password" {...passwordForm.register("newPassword", { required: true, minLength: 8 })} />
-            <Input label="Confirm password" type="password" {...passwordForm.register("confirmPassword", { required: true })} />
-            <Button type="submit" isLoading={passwordMutation.isPending}>Change password</Button>
+            <Input
+              label="Current password"
+              type="password"
+              {...passwordForm.register("currentPassword", { required: true })}
+            />
+            <Input
+              label="New password"
+              type="password"
+              {...passwordForm.register("newPassword", {
+                required: true,
+                minLength: 8,
+              })}
+            />
+            <Input
+              label="Confirm password"
+              type="password"
+              {...passwordForm.register("confirmPassword", { required: true })}
+            />
+            <Button type="submit" isLoading={passwordMutation.isPending}>
+              Change password
+            </Button>
           </form>
         )}
         <div className="pt-4 border-t border-surface-border">
-          <Button variant="danger" onClick={() => logoutAllMutation.mutate()} isLoading={logoutAllMutation.isPending}>
+          <Button
+            variant="danger"
+            onClick={() => logoutAllMutation.mutate()}
+            isLoading={logoutAllMutation.isPending}
+          >
             Logout from all devices
           </Button>
         </div>
@@ -144,17 +217,26 @@ export default function SettingsPage() {
           <h3 className="text-sm font-medium text-white mb-3">Recent logins</h3>
           <ul className="space-y-2 text-xs text-muted-foreground">
             {sessions?.slice(0, 10).map((s) => (
-              <li key={s._id} className="flex justify-between border-b border-surface-border/50 pb-2">
-                <span>{s.ip ?? "Unknown IP"} · {s.isActive ? "Active" : "Ended"}</span>
+              <li
+                key={s._id}
+                className="flex justify-between border-b border-surface-border/50 pb-2"
+              >
+                <span>
+                  {s.ip ?? "Unknown IP"} · {s.isActive ? "Active" : "Ended"}
+                </span>
                 <span>{new Date(s.createdAt).toLocaleString()}</span>
               </li>
             ))}
-            {(!sessions || sessions.length === 0) && <li>No session history yet</li>}
+            {(!sessions || sessions.length === 0) && (
+              <li>No session history yet</li>
+            )}
           </ul>
         </div>
       </SettingsSection>
 
-      {settingsMutation.isSuccess && <Alert variant="success" message="Settings saved" />}
+      {settingsMutation.isSuccess && (
+        <Alert variant="success" message="Settings saved" />
+      )}
     </div>
   );
 }

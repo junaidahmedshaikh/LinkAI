@@ -24,11 +24,22 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-surface-border/60 bg-surface/80 backdrop-blur-md">
       <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.HOME} className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 border border-accent/30">
-            <span className="text-sm font-bold text-accent">L</span>
+        <Link
+          to={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.HOME}
+          className="flex items-center gap-2"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg  border border-accent/30">
+            <img
+              src={
+                "https://res.cloudinary.com/dd9w1bmhf/image/upload/v1781702163/linkai-logo_bnaphm.png"
+              }
+              alt="LinkAI"
+              className="h-10 w-10"
+            />
           </div>
-          <span className="font-semibold text-white hidden sm:inline">LinkAI</span>
+          <span className="font-semibold text-white hidden sm:inline">
+            LinkAI
+          </span>
         </Link>
 
         <div className="flex items-center gap-3">

@@ -39,11 +39,18 @@ export default function LoginPage() {
         return;
       }
       dispatch(loginAction(data.user));
-      establishAuthSession(queryClient, data.user, data.accessToken, data.refreshToken);
+      establishAuthSession(
+        queryClient,
+        data.user,
+        data.accessToken,
+        data.refreshToken,
+      );
       navigate(ROUTES.DASHBOARD, { replace: true });
     },
     onError: (error: AxiosError<ApiResponse>) => {
-      setApiError(error.response?.data?.message || "Login failed. Please try again.");
+      setApiError(
+        error.response?.data?.message || "Login failed. Please try again.",
+      );
     },
   });
 
@@ -101,7 +108,9 @@ export default function LoginPage() {
             <div className="w-full border-t border-surface-border" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-surface-card px-2 text-muted">or continue with</span>
+            <span className="bg-surface-card px-2 text-muted">
+              or continue with
+            </span>
           </div>
         </div>
 
@@ -109,7 +118,10 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link to={ROUTES.REGISTER} className="text-accent hover:text-accent-hover font-medium">
+          <Link
+            to={ROUTES.REGISTER}
+            className="text-accent hover:text-accent-hover font-medium"
+          >
             Create account
           </Link>
         </p>

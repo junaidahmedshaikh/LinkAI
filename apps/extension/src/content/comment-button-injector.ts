@@ -5,6 +5,8 @@
  * Prevents duplicate injections
  */
 
+import { logger } from "@/utils/logger";
+
 const AI_BUTTON_DATA_ATTR = "data-ai-comment-button";
 
 export interface InjectedButton {
@@ -25,39 +27,29 @@ class CommentButtonInjector {
   injectButton(editor: HTMLElement): HTMLElement | null {
     // Check if button already injected for this editor
     if (this.injectedButtons.has(editor)) {
-      console.log(`[LinkAI] Button already injected for this editor`);
+      logger.log("comment-button-injector", "Button already injected");
       return this.injectedButtons.get(editor)?.button ?? null;
     }
 
-    console.log(`[LinkAI] Attempting to inject button...`);
+    logger.log("comment-button-injector", "Attempting to inject button");
 
     // Find the toolbar
     const toolbar = this.findToolbar(editor);
     if (!toolbar) {
-      console.log(`[LinkAI] ❌ Toolbar not found`);
+      logger.warn("comment-button-injector", "Toolbar not found");
       return null;
     }
-    console.log(`[LinkAI] ✓ Toolbar found`);
 
-    // Find insertion point (emoji button)
     const insertionPoint = this.findInsertionPoint(toolbar);
     if (!insertionPoint) {
-      console.log(`[LinkAI] ❌ Insertion point (emoji button) not found`);
-      console.log(`[LinkAI] Toolbar contains ${toolbar.querySelectorAll('button').length} buttons`);
-      toolbar.querySelectorAll('button').forEach((btn, i) => {
-        console.log(`  Button ${i}: aria-label="${btn.getAttribute('aria-label')}"`);
+      logger.warn("comment-button-injector", "Insertion point not found", {
+        buttonCount: toolbar.querySelectorAll("button").length,
       });
       return null;
     }
-    console.log(`[LinkAI] ✓ Insertion point found (${insertionPoint.getAttribute('aria-label')})`);
 
-    // Create the AI button
     const aiButton = this.createAIButton();
-    console.log(`[LinkAI] ✓ AI button created`);
-
-    // Inject button after insertion point
     insertionPoint.parentElement?.insertBefore(aiButton, insertionPoint.nextElementSibling);
-    console.log(`[LinkAI] ✓ AI button injected into DOM`);
 
     // Store reference
     const injected: InjectedButton = {
@@ -69,16 +61,15 @@ class CommentButtonInjector {
     this.injectedButtons.set(editor, injected);
 
     // Setup click handler
-    aiButton.addEventListener("click", async (e) => {
+    aiButton.addEventListener("click", (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      console.log(`[LinkAI] AI button clicked`);
-      
-      // Call all registered listeners
+      logger.log("comment-button-injector", "AI button clicked");
+
       this.clickListeners.forEach((listener) => listener(aiButton, editor));
     });
 
-    console.log(`[LinkAI] ✓ Button fully set up and ready`);
+    logger.log("comment-button-injector", "Button injected");
     return aiButton;
   }
 

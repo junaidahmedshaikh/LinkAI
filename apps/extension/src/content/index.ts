@@ -2,13 +2,26 @@ import { MessageType, sendMessage } from "@/services/messaging.service";
 import { detectLinkedInPageType } from "@/utils/linkedin-detector";
 import { extractForCurrentPage } from "@/utils/linkedin-extractors";
 import { extractActivePost } from "@/utils/linkedin-post";
-import { insertCommentText } from "@/utils/comment-insert";
+import { insertCommentText } from "@/content/utils/prosemirror-insert";
 import { persistDebugLog } from "@/utils/debug";
 import { linkedInCommentHandler } from "./linkedin-comment-handler";
 import type { MessageResponse } from "@/types/messages";
 
+const EXTRACTION_DEBOUNCE_MS = 2500;
+const INITIAL_EXTRACTION_DELAY_MS = 2000;
+
 let lastUrl = location.href;
 let observer: MutationObserver | null = null;
+let extractionDebounce: ReturnType<typeof setTimeout> | null = null;
+let lastExtractionSignature = "";
+
+function findObservationRoot(): Element {
+  return (
+    document.querySelector(
+      ".scaffold-finite-scroll__content, main.scaffold-layout__main, #main-content"
+    ) ?? document.body
+  );
+}
 
 function notifyPageChange(url: string): void {
   const pageType = detectLinkedInPageType(url);
@@ -18,7 +31,6 @@ function notifyPageChange(url: string): void {
   });
   void persistDebugLog("content", `page: ${pageType}`, { url });
 
-  // Start/stop AI comment handler based on page type
   if (pageType === "feed" || pageType === "post") {
     linkedInCommentHandler.start();
   } else {
@@ -27,6 +39,8 @@ function notifyPageChange(url: string): void {
 }
 
 function runExtraction(): void {
+  if (document.visibilityState !== "visible") return;
+
   const pageType = detectLinkedInPageType(window.location.href);
   let payload: Record<string, unknown>;
 
@@ -39,17 +53,28 @@ function runExtraction(): void {
     payload = extractForCurrentPage();
   }
 
+  const signature = JSON.stringify(payload);
+  if (signature === lastExtractionSignature) return;
+  lastExtractionSignature = signature;
+
   void sendMessage({
     type: MessageType.LINKEDIN_DATA_EXTRACTED,
     payload,
   });
 }
 
+function scheduleExtraction(delay = EXTRACTION_DEBOUNCE_MS): void {
+  if (document.visibilityState !== "visible") return;
+  if (extractionDebounce) clearTimeout(extractionDebounce);
+  extractionDebounce = setTimeout(runExtraction, delay);
+}
+
 function checkUrlChange(): void {
   if (location.href === lastUrl) return;
   lastUrl = location.href;
+  lastExtractionSignature = "";
   notifyPageChange(lastUrl);
-  setTimeout(runExtraction, 1200);
+  scheduleExtraction(EXTRACTION_DEBOUNCE_MS);
 }
 
 function setupUrlWatcher(): void {
@@ -64,19 +89,23 @@ function setupUrlWatcher(): void {
     replaceState(...args);
     checkUrlChange();
   };
-  setInterval(checkUrlChange, 1000);
 }
 
 function setupMutationObserver(): void {
   if (observer) observer.disconnect();
-  let debounce: ReturnType<typeof setTimeout> | null = null;
+
+  const root = findObservationRoot();
   observer = new MutationObserver(() => {
-    if (document.visibilityState !== "visible") return;
-    if (debounce) clearTimeout(debounce);
-    debounce = setTimeout(runExtraction, 800);
+    scheduleExtraction();
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(root, { childList: true, subtree: true });
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    scheduleExtraction(500);
+  }
+});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   void (async () => {
@@ -89,7 +118,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     } else if (type === MessageType.AI_INSERT_COMMENT) {
       const text = (message.payload as { text: string })?.text ?? "";
       const inserted = insertCommentText(text);
-      response = { success: inserted, data: { inserted }, error: inserted ? undefined : "Comment box not found" };
+      response = {
+        success: inserted,
+        data: { inserted },
+        error: inserted ? undefined : "Comment box not found",
+      };
     } else {
       return;
     }
@@ -103,7 +136,7 @@ function init(): void {
   notifyPageChange(location.href);
   setupUrlWatcher();
   setupMutationObserver();
-  setTimeout(runExtraction, 2000);
+  setTimeout(() => scheduleExtraction(0), INITIAL_EXTRACTION_DELAY_MS);
   void persistDebugLog("content", "content script ready");
 }
 

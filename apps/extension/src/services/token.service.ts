@@ -1,13 +1,20 @@
 import { storageService } from "./storage.service";
+import { isAccessTokenValid, isRefreshTokenPresent } from "@/utils/jwt.util";
 
 class TokenService {
   private memoryAccess: string | null = null;
 
   async getAccessToken(): Promise<string | null> {
-    if (this.memoryAccess) return this.memoryAccess;
+    if (this.memoryAccess && isAccessTokenValid(this.memoryAccess)) {
+      return this.memoryAccess;
+    }
     const stored = await storageService.getAccessToken();
-    this.memoryAccess = stored;
-    return stored;
+    if (stored && isAccessTokenValid(stored)) {
+      this.memoryAccess = stored;
+      return stored;
+    }
+    this.memoryAccess = null;
+    return null;
   }
 
   async setTokens(accessToken: string, refreshToken?: string): Promise<void> {
@@ -29,9 +36,9 @@ class TokenService {
 
   async hasValidSession(): Promise<boolean> {
     const accessToken = await this.getAccessToken();
-    if (accessToken && accessToken.length > 10) return true;
+    if (accessToken) return true;
     const refreshToken = await this.getRefreshToken();
-    return !!refreshToken && refreshToken.length > 10;
+    return !!refreshToken && isRefreshTokenPresent(refreshToken);
   }
 }
 

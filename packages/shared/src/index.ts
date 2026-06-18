@@ -7,6 +7,7 @@ export const API_ROUTES = {
     FORGOT_PASSWORD: "/api/auth/forgot-password",
     RESET_PASSWORD: "/api/auth/reset-password",
     ME: "/api/auth/me",
+    PROFILE: "/api/auth/profile",
     VERIFY_EMAIL: "/api/auth/verify-email",
     GOOGLE: "/api/auth/google",
     LINKEDIN: "/api/auth/linkedin",

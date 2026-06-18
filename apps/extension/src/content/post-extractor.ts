@@ -56,9 +56,6 @@ class PostExtractor {
     for (let i = 0; i < MAX_LEVELS; i++) {
       if (!current) break;
       if (current.tagName === "ARTICLE") {
-        console.log(
-          `[LinkAI] ✓ Post container found: <article> tag at level ${i}`
-        );
         return current;
       }
       current = current.parentElement;
@@ -74,9 +71,6 @@ class PostExtractor {
       const hasSignificantText = this.containerHasSignificantText(current);
 
       if (hasProfileLink && hasActionButtons && hasSignificantText) {
-        console.log(
-          `[LinkAI] ✓ Post container found: semantic combination at level ${i}`
-        );
         return current;
       }
 
@@ -89,9 +83,6 @@ class PostExtractor {
       if (!current) break;
 
       if (current.getAttribute("role") === "article") {
-        console.log(
-          `[LinkAI] ✓ Post container found: role="article" at level ${i}`
-        );
         return current;
       }
 
@@ -99,18 +90,12 @@ class PostExtractor {
         current.getAttribute("data-urn") ||
         current.getAttribute("data-feed-item-id")
       ) {
-        console.log(
-          `[LinkAI] ✓ Post container found: data attributes at level ${i}`
-        );
         return current;
       }
 
       current = current.parentElement;
     }
 
-    console.log(
-      `[LinkAI] ❌ Post container not found after checking ${MAX_LEVELS} levels`
-    );
     return null;
   }
 
@@ -194,7 +179,6 @@ class PostExtractor {
       if (element) {
         const text = this.extractTextContent(element);
         if (text && text.length > 10) {
-          console.log(`[LinkAI] Post text found via selector: ${selector}`);
           return text;
         }
       }
@@ -214,7 +198,6 @@ class PostExtractor {
     }
     
     if (longestText && longestText.length > 20) {
-      console.log(`[LinkAI] Post text found (longest block): ${longestText.length} chars`);
       return longestText;
     }
 
@@ -223,11 +206,9 @@ class PostExtractor {
     
     // If we have reasonable content, use it
     if (allText && allText.length > 50) {
-      console.log(`[LinkAI] Post text extracted from main element: ${allText.length} chars`);
       return allText;
     }
 
-    console.log(`[LinkAI] ⚠️ No meaningful post text found, using default`);
     return "Post shared on LinkedIn";
   }
 
