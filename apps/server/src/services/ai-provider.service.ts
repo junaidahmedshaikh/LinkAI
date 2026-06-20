@@ -8,12 +8,12 @@ const BASE_RETRY_DELAY_MS = 800;
 
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 
-type DeepSeekMessage = {
+type OpenRouterMessage = {
   role: "system" | "user";
   content: string;
 };
 
-type DeepSeekChatResponse = {
+type OpenRouterChatResponse = {
   choices?: Array<{
     message?: {
       content?: string;
@@ -48,18 +48,18 @@ class AiProviderService {
     tone: CommentTone,
     context?: { author?: string; userName?: string; userHeadline?: string; hashtags?: string[] }
   ): Promise<IGeneratedComment> {
-    if (!env.DEEPSEEK_API_KEY) {
+    if (!env.OPENROUTER_API_KEY) {
       if (!isProduction) {
         return this.generateMock(postContent, tone, context);
       }
-      throw new Error("DeepSeek API key is not configured");
+      throw new Error("OpenRouter API key is not configured");
     }
 
     try {
-      return await this.generateWithDeepSeek(postContent, tone, context);
+      return await this.generateWithOpenRouter(postContent, tone, context);
     } catch (error) {
       if (!isProduction) {
-        console.warn("[AI Provider] DeepSeek failed, using mock fallback:", error);
+        console.warn("[AI Provider] OpenRouter failed, using mock fallback:", error);
         return this.generateMock(postContent, tone, context);
       }
       throw error;
@@ -68,16 +68,34 @@ class AiProviderService {
 
   private buildSystemPrompt(tone: CommentTone): string {
     return [
-      "You are an expert LinkedIn comment writer.",
-      "Your job is to generate a single comment that sounds human, relevant, and naturally written by a real professional.",
-      "Write 1 or 2 sentences only.",
-      "Target 18 to 45 words.",
-      "Reference one concrete detail, idea, or implication from the post.",
-      "Add a fresh observation, a concise follow-up question, or a practical insight when appropriate.",
-      "Avoid generic praise, robotic phrasing, filler words, hashtags, emojis, markdown, quotation marks, and disclaimers.",
-      "Do not repeat the post or sound promotional.",
+      "You write LinkedIn comments that sound like a real professional typed them quickly between meetings, not like an AI assistant.",
+      "Write 1 or 2 sentences. Target 18 to 40 words.",
+      "React to one specific detail, claim, or example from the post, the way a person would if something in it actually caught their attention.",
+      "Sentences should vary in length and rhythm. Do not make every sentence the same tidy shape.",
+      "",
+      "HARD RULE: Never use an em dash (—) or a double hyphen (--) anywhere in the comment, for any reason. Use a period, comma, or just a new sentence instead. This rule has no exceptions.",
+      "",
+      "Avoid these AI writing tells:",
+      "- Wrapping up your own observation with a clause that explains its own significance, such as 'which shows...', 'highlighting...', 'demonstrating...', 'proving that...', or 'that ties X to Y'. State the fact or ask the question and stop talking.",
+      "- Generic praise or hollow validation ('great post', 'this is so true', 'love this').",
+      "- Promotional or inflated language ('game-changing', 'crucial', 'pivotal', 'a testament to', 'inspiring journey').",
+      "- Contrastive rule-of-three phrasing like 'X, not Y' or 'not just X, but Y'.",
+      "- Hedge stacking ('could potentially', 'it might be argued that').",
+      "- A tidy concluding sentence that restates the comment's own point.",
+      "- Addressing the subject of the post directly as 'you' unless the post is written in the first person by that same person.",
+      "- Hashtags, emojis, markdown, quotation marks around the whole comment, or any disclaimer about being an AI.",
+      "",
+      "Example of what NOT to do (real failure, do not repeat this pattern):",
+      "Bad: \"Balancing a nine-hour Wipro role with self-study and still hitting AIR 356 shows how strategic time-blocking can turn a full-time job into a launchpad, not a roadblock — what scheduling tweaks helped you stay consistent?\"",
+      "Why it's bad: two em dashes, a self-summarizing clause ('shows how... can turn...'), and an 'X, not Y' contrast pair.",
+      "Good: \"Nine-hour Wipro job and still cracked AIR 356 with self-study. Genuinely curious what the daily schedule looked like, that's the hard part most people give up on before the syllabus even matters.\"",
+      "Why it's better: no dashes, states the fact plainly, asks a real question without explaining why the question is good.",
+      "",
+      "Do not repeat the post back or summarize it. Do not sound like marketing copy.",
+      "It is fine to sound mildly opinionated, slightly informal, or like you're mid-thought, as long as it stays professional and readable.",
       `Tone guidance: ${TONE_GUIDANCE[tone]}`,
-      "Return only the final comment text.",
+      "Before returning your answer, check it for an em dash or double hyphen. If you find one, rewrite the sentence without it.",
+      "Return only the final comment text, nothing else.",
     ].join("\n");
   }
 
@@ -97,34 +115,66 @@ class AiProviderService {
     return parts.join("\n\n");
   }
 
-  private async generateWithDeepSeek(
+  private async generateWithOpenRouter(
+    postContent: string,
+    tone: CommentTone,
+    context?: { author?: string; userName?: string; userHeadline?: string; hashtags?: string[] }
+  ): Promise<IGeneratedComment> {
+    try {
+      return await this.callOpenRouter(env.OPENROUTER_MODEL, postContent, tone, context);
+    } catch (primaryError) {
+      if (!env.OPENROUTER_FALLBACK_MODEL) {
+        throw primaryError;
+      }
+
+      console.warn(
+        `[AI Provider] Primary model (${env.OPENROUTER_MODEL}) failed, trying fallback (${env.OPENROUTER_FALLBACK_MODEL}):`,
+        primaryError
+      );
+
+      try {
+        return await this.callOpenRouter(env.OPENROUTER_FALLBACK_MODEL, postContent, tone, context);
+      } catch (fallbackError) {
+        // Surface the fallback error, since it reflects the most recent failure,
+        // but keep the primary error visible in the log above for diagnosis.
+        throw fallbackError;
+      }
+    }
+  }
+
+  private async callOpenRouter(
+    model: string,
     postContent: string,
     tone: CommentTone,
     context?: { author?: string; userName?: string; userHeadline?: string; hashtags?: string[] }
   ): Promise<IGeneratedComment> {
     const systemPrompt = this.buildSystemPrompt(tone);
     const userPrompt = this.buildUserPrompt(postContent, context);
-    const endpoint = `${env.DEEPSEEK_BASE_URL.replace(/\/$/, "")}/chat/completions`;
+    const endpoint = `${env.OPENROUTER_BASE_URL.replace(/\/$/, "")}/chat/completions`;
 
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt < env.DEEPSEEK_MAX_RETRIES; attempt += 1) {
+    for (let attempt = 0; attempt < env.OPENROUTER_MAX_RETRIES; attempt += 1) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), env.DEEPSEEK_TIMEOUT_MS);
+      const timeout = setTimeout(() => controller.abort(), env.OPENROUTER_TIMEOUT_MS);
 
       try {
         const response = await fetch(endpoint, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
+            Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
             "Content-Type": "application/json",
+            // Optional but recommended by OpenRouter for analytics/rankings.
+            // Safe to leave blank if env vars are unset.
+            ...(env.OPENROUTER_SITE_URL ? { "HTTP-Referer": env.OPENROUTER_SITE_URL } : {}),
+            ...(env.OPENROUTER_SITE_NAME ? { "X-Title": env.OPENROUTER_SITE_NAME } : {}),
           },
           body: JSON.stringify({
-            model: env.DEEPSEEK_MODEL,
+            model,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt },
-            ] satisfies DeepSeekMessage[],
+            ] satisfies OpenRouterMessage[],
             temperature: this.getTemperatureForTone(tone),
             max_tokens: MAX_RESPONSE_TOKENS,
             stream: false,
@@ -135,20 +185,20 @@ class AiProviderService {
         if (!response.ok) {
           const errorText = await response.text();
           lastError = new Error(
-            `DeepSeek API error (${response.status}): ${this.extractErrorMessage(errorText)}`
+            `OpenRouter API error (${response.status}) [${model}]: ${this.extractErrorMessage(errorText)}`
           );
-          if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < env.DEEPSEEK_MAX_RETRIES - 1) {
+          if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < env.OPENROUTER_MAX_RETRIES - 1) {
             await this.delay(BASE_RETRY_DELAY_MS * 2 ** attempt);
             continue;
           }
           throw lastError;
         }
 
-        const data = (await response.json()) as DeepSeekChatResponse;
+        const data = (await response.json()) as OpenRouterChatResponse;
         const text = data.choices?.[0]?.message?.content?.trim();
 
         if (!text) {
-          throw new Error("DeepSeek returned an empty response");
+          throw new Error(`OpenRouter returned an empty response [${model}]`);
         }
 
         return {
@@ -160,13 +210,13 @@ class AiProviderService {
         const normalizedError =
           error instanceof Error
             ? error.name === "AbortError"
-              ? new Error(`DeepSeek request timed out after ${env.DEEPSEEK_TIMEOUT_MS}ms`)
+              ? new Error(`OpenRouter request timed out after ${env.OPENROUTER_TIMEOUT_MS}ms [${model}]`)
               : error
             : new Error(String(error));
 
         lastError = normalizedError;
 
-        if (attempt < env.DEEPSEEK_MAX_RETRIES - 1 && this.isRetryableError(normalizedError)) {
+        if (attempt < env.OPENROUTER_MAX_RETRIES - 1 && this.isRetryableError(normalizedError)) {
           await this.delay(BASE_RETRY_DELAY_MS * 2 ** attempt);
           continue;
         }
@@ -177,11 +227,17 @@ class AiProviderService {
       }
     }
 
-    throw lastError || new Error("Failed to generate comment after retries");
+    throw lastError || new Error(`Failed to generate comment after retries [${model}]`);
   }
 
   private normalizeComment(text: string): string {
-    const collapsed = text.replace(/\s+/g, " ").trim().replace(/^["'`]+|["'`]+$/g, "");
+    const collapsed = text
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/^["'`]+|["'`]+$/g, "")
+      .replace(/\s*(?:[—–]|--)\s*/g, ", ")
+      .replace(/,\s*,/g, ",")
+      .replace(/\s+([.,])/g, "$1");
     const words = collapsed.split(/\s+/);
     if (words.length <= MAX_WORD_COUNT) return collapsed;
     return words.slice(0, MAX_WORD_COUNT).join(" ").trim();
@@ -195,7 +251,7 @@ class AiProviderService {
     const trimmed = raw.trim();
     if (!trimmed) return "Unknown error";
     try {
-      const parsed = JSON.parse(trimmed) as DeepSeekChatResponse;
+      const parsed = JSON.parse(trimmed) as OpenRouterChatResponse;
       return parsed.error?.message || trimmed.slice(0, 200);
     } catch {
       return trimmed.slice(0, 200);
@@ -243,7 +299,7 @@ class AiProviderService {
       ],
     };
 
-    const options = templates[tone];
+    const options = templates["professional"];
     return {
       text: options[Math.floor(Math.random() * options.length)],
       tone,
